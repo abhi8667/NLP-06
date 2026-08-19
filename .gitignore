@@ -33,3 +33,16 @@ Thumbs.db
 .kombai/
 .vscode/
 .idea/
+
+# --- added for the shared module & P0 work ---
+synthea/
+p0/.venv/
+p0/data/
+*.psv
+.pytest_cache/
+
+# model artefacts
+*.gguf
+*.pt
+*.pth
+*.ckpt

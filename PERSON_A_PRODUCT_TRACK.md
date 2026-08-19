@@ -1,159 +1,286 @@
-# Person A — Product Track
+# Person A — Product Track: Step-by-Step Build Guide
 
-**You own:** the patient assistant, the retrieval layer, both interfaces, the voice pipeline, and the alert→summary bridge.
+**You own:** clinical-note generation, retrieval, the LLM layer, both interfaces, voice, the alert→summary bridge, and the summary evaluation.
 
-Read [`PROJECT_GUIDE.md`](PROJECT_GUIDE.md) first for the locked decisions. This file is your work.
+Read [`PROJECT_GUIDE.md`](PROJECT_GUIDE.md) first for locked decisions. This file is the order to build in.
 
-> **Your track is off the critical path.** The research track gates the schedule, so you have slack. Spend it supporting the experiment campaign and the figures — **not** on UI polish, which is explicitly out of scope.
+> **Your track is off the critical path.** Person B gates the schedule. Use your slack on the campaign and figures — **not** UI polish, which is out of scope.
 
----
-
-## Already done
-
-- [x] Ollama installed and running (v0.32.13)
-- [x] `llama3.1:8b` pulled — 4.9 GB, measured 21 tok/s
-- [x] `llama3.2:3b` pulled — 2.0 GB, measured 66 tok/s
-- [x] Both benchmarked on a real alert-summary prompt
+**Rule for every step:** verify before moving on. Each has a *"done when"* you can actually check.
 
 ---
 
-## The rules you must not break
+## Stage 0 — Setup ✅
 
-**Patient isolation is the privacy boundary.** Every retrieval filters on `patient_id`. A test must prove a cross-patient query returns nothing — verified by test, not by inspection.
+- [x] Ollama installed (v0.32.13)
+- [x] `llama3.2:3b` — 2.6 GB resident, 44 tok/s
+- [x] `llama3.1:8b` — 4.2 GB resident, 20 tok/s
+- [x] Both benchmarked on a real alert prompt
 
-**No outbound network calls during inference.** Ever. This is the project's entire premise. Audit it, don't assume it.
-
-**Two models, split by job:**
-
-| Job | Model | Why |
-|---|---|---|
-| Alert summaries | `llama3.1:8b` | The 3B **missed a low-oxygen reading** in testing — the most clinically important of three flagged vitals |
-| Patient chat | `llama3.2:3b` | 3× faster, latency matters, stakes lower |
-
-**Temperature 0.2** for both. Matches the paper we build on.
-
-**Hallucination cannot be detected by keyword matching.** We proved this: both models fabricated content and a keyword checker reported both as clean. The 3B invented "a history of exacerbations"; the 8B invented a 24-hour trend. Neither used a watchlist word. Your verifier must work at the level of individual claims.
+**Decision made for you:** start **3B-only**. They can't co-reside (2.6 + 4.2 > 6 GB) and swapping costs 7–11 s. Revisit in Stage 8 with real scenarios.
 
 ---
 
-## P2 — Data pipeline *(shared with B)*
+## Stage 1 — Shared foundations *(coordinate with Person B first)*
 
-Your half is the retrieval side.
+### Step 1 — Agree one shared preprocessing module
 
-- [ ] Generate synthetic encounter notes per patient using the local LLM — these populate the knowledge base, since PhysioNet has vitals but no free text
-- [ ] Chunk and embed notes into **per-patient ChromaDB collections**
-- [ ] Tag every chunk with `patient_id` metadata
-- [ ] Stand up SQLite + AES-256 on the encrypted volume
-- [ ] **Gate:** a cross-patient retrieval probe returns nothing
+Before either of you writes code. You both need loading, forward-fill and NEWS2. **If your NEWS2 disagrees with theirs, the alert says one thing and the summary another** — and that will surface in a demo.
+
+- [ ] Agree on `shared/preprocessing.py` — who writes it, where it lives
+- [ ] Agree the NEWS2 implementation is imported by both, never copy-pasted
+
+**Done when:** you both import the same function and get identical scores on the same patient.
+
+### Step 2 — Load and fill
+
+```python
+d = pd.read_csv(path, sep="|")          # one row = one hour
+for c in ["HR","O2Sat","Temp","SBP","Resp","Glucose"]:
+    d[c] = d[c].ffill().bfill()          # bfill matters — see below
+```
+
+**Gotcha:** row 1 is often entirely `NaN` — forward-fill has nothing to carry from. Averaged across patients, ~0.6 rows per file stay empty after `ffill` alone. Without `bfill` you get `NaN`s in generated notes.
+
+**Also:** `EtCO2` is 100% empty. `Unit1`/`Unit2` are only 52% populated. Don't build on either.
+
+- [ ] Loader handles leading gaps
+- [ ] Record the per-vital imputation rate — **this goes in the paper**
+
+**Done when:** you can load any patient and get zero `NaN`s in the six vitals.
+
+### Step 3 — NEWS2 per hour
+
+Five of seven components are available (no consciousness, no air/oxygen), so max is **14 not 20**.
+
+- [ ] Score each of Resp, SpO₂, SBP, HR, Temp
+- [ ] Total per hour; label = total ≥ 5
+
+**Done when:** patient `p000001` scores 4 at hour 2, rising to 9 at hour 8.
 
 ---
 
-## P3A — Build the assistant
+## Stage 2 — Build the knowledge base *(your biggest task)*
 
-### RAG layer
+PhysioNet has **no clinical text at all.** RAG retrieves text. You have to manufacture it.
 
-- [ ] `embedder.py` — chunk and embed patient records
-- [ ] `retriever.py` — semantic search with a **hard `where` filter on `patient_id`**
-- [ ] `prompt_builder.py` — assemble context + question, with an explicit instruction to refuse when context is insufficient
+### Step 4 — Derive the facts worth writing about
 
-### LLM layer
+- [ ] NEWS2 trajectory and when it crossed 5
+- [ ] Vital trends ("heart rate rose from 89 to 110 over four hours")
+- [ ] Threshold crossings — when each vital first left normal range
+- [ ] Which labs were ordered and what they showed
+- [ ] Stay context — hour N of M, age, sex, admission timing
 
-- [ ] `ollama_client.py` — local HTTP calls, temperature 0.2, model selectable per job
-- [ ] Confirm no network egress during generation
+### Step 5 — Generate notes from templates
 
-### Backend
+3–5 notes per patient covering different points in the stay: admission, a mid-stay nursing note, a deterioration note if NEWS2 crossed 5, a labs note.
 
-- [ ] FastAPI: `/query`, `/ingest/lab_report`, `/alerts`, `/score`
+**The rule that makes Stage 8 possible:** every fact must come from real data via a template. Fill values into sentence structures; let the LLM smooth the phrasing only. **Never let it invent freely** — if it does, you're evaluating one model's hallucinations against another's and the whole C3 evaluation is meaningless.
 
-### Interfaces
+- [ ] Template set covering the note types
+- [ ] Generator fills from real values
+- [ ] **A ground-truth fact list saved per patient** — you will need this in Stage 8
 
-- [ ] Patient chat (Streamlit) — conversation history, clear "information only, not medical advice" disclaimer
-- [ ] Clinician dashboard (Streamlit) — alerts ranked by risk, drill-down, follow-up question box
-- [ ] Lab-report PDF ingestion → text → chunks → patient's collection
+**Done when:** you can point at any sentence in any note and name the row it came from.
 
-### Voice — demo scope only
+---
 
-Not a paper contribution. **First item on the de-scoping ladder** if the schedule tightens.
+## Stage 3 — Retrieval
+
+### Step 6 — Embed into per-patient collections
+
+- [ ] Chunk notes
+- [ ] Embed locally (BGE-small or MiniLM — no API)
+- [ ] One ChromaDB collection **per patient**, `patient_id` in metadata
+
+### Step 7 — Retriever with a hard filter
+
+```python
+results = collection.query(
+    query_embeddings=embed(question),
+    n_results=4,
+    where={"patient_id": patient_id},    # the privacy boundary
+)
+```
+
+### Step 8 — The adversarial isolation test ⚠️
+
+**Write this before any UI exists.** Isolation is a security property, not a feature.
+
+- [ ] Test actively tries to retrieve patient B's data while scoped to patient A
+- [ ] Test asserts the result is **empty**, not merely "different"
+- [ ] Test runs in CI / on every change
+
+**Done when:** the test passes and you have *tried* to break it.
+
+---
+
+## Stage 4 — Generation
+
+### Step 9 — Ollama client
+
+- [ ] POST to `localhost:11434/api/generate`, `stream: False`
+- [ ] **Temperature 0.2**, model configurable
+- [ ] Confirm no outbound network call during generation
+
+### Step 10 — Prompt builder
+
+```
+You are a clinical decision support assistant.
+You have access only to the following information about this patient.
+Do not infer, assume, or generate information not present in the context.
+If the context does not contain enough to answer safely, say so.
+
+PATIENT CONTEXT:
+{retrieved chunks, separated by ---}
+
+QUESTION:
+{question}
+
+RESPONSE:
+```
+
+- [ ] Refusal instruction included
+- [ ] **Test the refusal actually fires** — ask something the record can't answer
+
+### Step 11 — First end-to-end, from the terminal
+
+- [ ] One patient, one question, grounded answer — no UI
+
+**Done when this works, ~80% of your track's risk is gone.** Everything after is presentation.
+
+---
+
+## Stage 5 — Interfaces
+
+### Step 12 — FastAPI
+
+- [ ] `/query`, `/ingest/lab_report`, `/alerts`, `/score`
+
+### Step 13 — Patient chat (Streamlit)
+
+- [ ] Conversation history within session
+- [ ] Disclaimer: information only, not medical advice
+- [ ] No cross-patient data reachable from session state
+
+### Step 14 — Clinician dashboard shell
+
+- [ ] Alerts ranked by risk score (stub the data for now)
+- [ ] Drill-down panel
+- [ ] Follow-up question box
+
+**Keep it functional, not pretty.** Polish is explicitly out of scope.
+
+---
+
+## Stage 6 — Extras *(first to cut if time runs short)*
+
+### Step 15 — Lab-report PDF ingestion
+
+- [ ] PDF → text → chunks → that patient's collection
+
+### Step 16 — Voice *(demo scope, not a contribution)*
 
 - [ ] `faster-whisper` small int8 for speech-to-text (~500 MB VRAM)
 - [ ] Piper for speech output (CPU only)
-- [ ] Wire both through the *same* RAG pipeline as typed input — no separate path
+- [ ] Both route through the **same** RAG pipeline as typed input — no separate path
 
-Both run **sequentially** with the LLM, not concurrently, so there is no VRAM contention on the 6 GB card.
-
-**Exit gate:**
-- [ ] A patient question returns an answer traceable to that patient's own record
-- [ ] An adversarial probe for another patient's data returns nothing
-- [ ] No outbound network call occurs during inference
+Runs sequentially with the LLM, so no VRAM contention.
 
 ---
 
-## P5 — The alert→summary bridge *(your most important work)*
+## Stage 7 — The alert→summary bridge *(your contribution — C3)*
 
-This is **C3**, the contribution with no analogue in any of the five base papers. Not that RAG and federated learning both exist — that the output of a privacy-protected federated model becomes the semantic query input to a grounded LLM.
+> **Start the moment Person B has ANY checkpoint. Do not wait for the campaign.**
 
-> **Start this against the FIRST checkpoint Person B produces. Do not wait for the campaign to finish.** You need *a* trained model, not the final one.
+### Step 17 — Serve the detector
 
-- [ ] `risk_scorer.py` — serve the trained detector
-- [ ] `alert_rag_bridge.py` — identify which vitals are abnormal, build an alert-specific retrieval query
-- [ ] Alert summary prompt — explicit constraints: no treatment recommendations, no fabrication
-- [ ] Live alerts in the dashboard, ranked by risk
-- [ ] Full end-to-end flow: reading arrives → scored → alert raised → summary generated → clinician reviews → follow-up answered
+- [ ] `risk_scorer.py` loads B's model, scores incoming windows
 
-**Exit gate:**
-- [ ] The walkthrough runs start to finish with no manual intervention
-- [ ] Privacy audit passes: no egress, per-patient isolation holds, storage encrypted, no patient data in logs or session state
+### Step 18 — Build the bridge properly
+
+**The wrong version:** dashboard shows an alert, and separately shows a summary. Two panels. Contributes nothing.
+
+**The right version:** the alert's *content* becomes the retrieval *query*.
+
+- [ ] Identify **which** vitals are abnormal and by how much
+- [ ] Build the retrieval query **from those specific abnormalities** — not a generic patient lookup
+- [ ] Retrieve history relevant to *this* deterioration
+- [ ] Generate a summary: what's abnormal, what history explains it, what patterns appear
+
+**Design decision that removes your model-size problem:** render the flagged vitals as **structured UI** — a table, deterministic. Use the LLM only for the narrative. A missed vital then becomes impossible by construction, rather than something you hope the model complies with. This is why 3B-only is viable.
+
+- [ ] Prompt forbids treatment recommendations and fabrication
+
+### Step 19 — Full flow
+
+- [ ] Reading arrives → scored → alert raised → summary generated → clinician reviews → follow-up answered
+
+### Step 20 — Privacy audit
+
+- [ ] No outbound network calls anywhere
+- [ ] Per-patient isolation holds under adversarial test
+- [ ] Storage encrypted; raw DB file unreadable
+- [ ] No patient data in API logs or Streamlit session state
+
+**Done when:** the whole walkthrough runs with no manual intervention.
 
 ---
 
-## P6 — Summary evaluation *(shared with B)*
+## Stage 8 — Evaluation *(this is the research, not the build)*
 
-Three independent layers. The third is the strongest and the cheapest to defend, because we control ground truth.
+Building the bridge takes a week. **Evaluating it rigorously is what makes it publishable.**
 
-- [ ] Generate 20–30 alert scenarios from held-out patients — **hold them out at the P2 freeze**, not later
-- [ ] **Human rubric** — two raters scoring independently, then Cohen's κ
-- [ ] **LLM-as-judge** — multiple judge models on the same rubric
-- [ ] **Programmatic fact verification** — extract each claim, check it against the source record, report an objective hallucination rate
+### Step 21 — Scenarios
+
+- [ ] 20–30 alert scenarios from held-out patients
+- [ ] **Held out at the P2 freeze**, not chosen later
+
+### Step 22 — Human rubric
+
+- [ ] Factual accuracy, relevance, completeness, hallucination, conciseness
+- [ ] Two raters scoring independently
+- [ ] Cohen's κ for inter-rater agreement
+
+### Step 23 — LLM-as-judge
+
+- [ ] Multiple judge models, same rubric
+
+### Step 24 — Programmatic fact verification ⚠️
+
+**Keyword matching does not work.** Proven on your hardware: both models fabricated content and a keyword checker reported both clean. The 3B invented "a history of exacerbations"; the 8B invented a 24-hour trend. Neither used a watchlist word.
 
 ```python
-# integration/fact_verifier.py — claim-level, NOT keyword matching
-def verify_summary_facts(summary, source_record):
-    claims = extract_claims(summary)
-    unsupported = [c for c in claims if not supported_by(c, source_record)]
+def verify_summary_facts(summary, ground_truth_facts):
+    claims = extract_claims(summary)              # claim-level, not keyword
+    unsupported = [c for c in claims if not supported_by(c, ground_truth_facts)]
     return len(unsupported) / max(len(claims), 1), unsupported
 ```
 
-**Exit gate:**
-- [ ] All three layers reported with numbers, including κ and the objective hallucination rate
-- [ ] Disagreements between layers explained, not averaged away
+This is why Step 5 demanded a ground-truth fact list per patient.
+
+### Step 25 — Settle the model question
+
+- [ ] Run 3B and 8B across all scenarios with the verifier
+- [ ] If 3B holds up, ship 3B-only — a genuine edge-deployment finding
+
+**Done when:** all three layers reported with numbers, and disagreements between them explained rather than averaged.
 
 ---
 
-## What you owe Person B
+## Handoffs
 
-| When | What |
-|---|---|
-| P6 | The hallucination rate and rubric scores — these go in the paper's C3 section |
-| P7 | An annotated alert example for the figures (anonymised) |
-| P8 | Review of the system-architecture and C3 sections |
-| P4 | Spare hands — the campaign runs for days and needs babysitting |
+**You need from Person B:** the frozen dataset hash and held-out patient list (P2) · the **first** checkpoint, not the final one (P3B) · risk-score format and threshold (P5)
 
-## What you need from Person B
-
-| When | What |
-|---|---|
-| P2 | The frozen dataset hash and the held-out patient list |
-| P3B → P5 | The **first** trained checkpoint — not the final one |
-| P5 | The risk-score output format and threshold |
+**You owe Person B:** hallucination rate and rubric scores (P6) · an annotated alert example for the figures (P7) · review of the architecture and C3 sections (P8) · spare hands during the campaign (P4)
 
 ---
 
 ## De-scoping ladder — your items
 
-If the schedule tightens, drop in this order:
+1. Voice *(demo only)*
+2. Lab-report PDF ingestion
+3. Dashboard polish *(already out of scope)*
 
-1. Voice pipeline *(demo only, not a contribution)*
-2. Lab-report PDF ingestion *(the notes corpus already demonstrates RAG)*
-3. Dashboard polish *(functional beats pretty — this is explicitly out of scope anyway)*
-
-**Never cut:** the alert→summary bridge. Without it the paper is an ε-sweep with a chatbot attached.
+**Never cut the alert→summary bridge.** Without it the paper is an ε-sweep with a chatbot attached.
