@@ -1,0 +1,23 @@
+# NLP-06 · P0 feasibility spikes
+# Install with:  uv pip install -r requirements.txt --index-strategy unsafe-best-match
+# Torch comes from the CUDA 12.4 index (RTX 4050, sm_89).
+--extra-index-url https://download.pytorch.org/whl/cu124
+
+# --- core numerics ---
+numpy>=1.26,<3
+pandas>=2.2
+scipy>=1.13
+scikit-learn>=1.5
+
+# --- S2: DP + federated ---
+torch>=2.5
+opacus>=1.5
+flwr>=1.13
+
+# --- S3: PTB-XL ---
+wfdb>=4.1
+neurokit2>=0.2.10
+
+# --- reporting ---
+matplotlib>=3.9
+tabulate>=0.9

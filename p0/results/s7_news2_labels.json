@@ -1,0 +1,40 @@
+{
+  "threshold": 5,
+  "sets": {
+    "training_setA": {
+      "patients": 800,
+      "news2_mean": 2.256,
+      "positive_hours": 0.12983,
+      "positive_patients": 0.6375,
+      "prevalence_by_threshold": {
+        "3": 0.40679,
+        "4": 0.24452,
+        "5": 0.12983,
+        "6": 0.06436,
+        "7": 0.03022
+      },
+      "window_formable_share": 0.8425,
+      "agreement_precision": 0.0296,
+      "agreement_recall": 0.256,
+      "patient_level_recall": 0.7551
+    },
+    "training_setB": {
+      "patients": 800,
+      "news2_mean": 2.08,
+      "positive_hours": 0.1217,
+      "positive_patients": 0.555,
+      "prevalence_by_threshold": {
+        "3": 0.35815,
+        "4": 0.21549,
+        "5": 0.1217,
+        "6": 0.06496,
+        "7": 0.03102
+      },
+      "window_formable_share": 0.7887,
+      "agreement_precision": 0.0199,
+      "agreement_recall": 0.1726,
+      "patient_level_recall": 0.6
+    }
+  },
+  "mean_positive_hours": 0.12577
+}

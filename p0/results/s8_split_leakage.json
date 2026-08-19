@@ -1,0 +1,18 @@
+{
+  "windows": 15562,
+  "patients": 565,
+  "positive_rate": 0.1488,
+  "window_level": {
+    "auprc": 0.6497943170024332,
+    "auroc": 0.8888599226845987,
+    "positive_rate": 0.1493735909461975
+  },
+  "patient_level": {
+    "auprc": 0.65413604353911,
+    "auroc": 0.8996667702230902,
+    "positive_rate": 0.12496025115251541
+  },
+  "patients_leaked": 536,
+  "auprc_inflation": -0.0066,
+  "auroc_inflation": -0.012
+}

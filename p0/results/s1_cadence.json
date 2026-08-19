@@ -1,0 +1,98 @@
+{
+  "source": "..\\synthea\\output\\csv\\observations.csv",
+  "timestamp": {
+    "unparseable": 0,
+    "share_with_time_marker": 1.0,
+    "distinct_times_of_day": 3075
+  },
+  "missing_codes": [
+    {
+      "code": "59408-5",
+      "name": "spo2"
+    }
+  ],
+  "alternate_codes_found": {
+    "spo2": {
+      "code": "2708-6",
+      "n": 48
+    },
+    "glucose": {
+      "code": "2345-7",
+      "n": 326
+    }
+  },
+  "news2_components": {
+    "resp_rate": {
+      "code": "9279-1",
+      "n": 773,
+      "state": "OK"
+    },
+    "spo2": {
+      "code": "2708-6",
+      "n": 48,
+      "state": "SPARSE"
+    },
+    "temperature": {
+      "code": "8310-5",
+      "n": 73,
+      "state": "SPARSE"
+    },
+    "bp_systolic": {
+      "code": "8480-6",
+      "n": 782,
+      "state": "OK"
+    },
+    "heart_rate": {
+      "code": "8867-4",
+      "n": 773,
+      "state": "OK"
+    }
+  },
+  "news2_blocked_by": [
+    "spo2",
+    "temperature"
+  ],
+  "median_gap_hours": {
+    "glucose": 840.0,
+    "temperature": 24.0,
+    "bp_diastolic": 4368.0,
+    "bp_systolic": 4368.0,
+    "heart_rate": 4368.0,
+    "resp_rate": 4368.0
+  },
+  "overall_median_gap_hours": 3696.0,
+  "window_formability": [
+    {
+      "max_gap_h": 1,
+      "patients_ok": 0,
+      "patients_total": 52,
+      "share": 0.0
+    },
+    {
+      "max_gap_h": 6,
+      "patients_ok": 0,
+      "patients_total": 52,
+      "share": 0.0
+    },
+    {
+      "max_gap_h": 24,
+      "patients_ok": 1,
+      "patients_total": 52,
+      "share": 0.0192
+    },
+    {
+      "max_gap_h": 168,
+      "patients_ok": 1,
+      "patients_total": 52,
+      "share": 0.0192
+    },
+    {
+      "max_gap_h": 720,
+      "patients_ok": 2,
+      "patients_total": 52,
+      "share": 0.0385
+    }
+  ],
+  "verdict": "FAIL",
+  "share_at_24h": 0.0192
+}

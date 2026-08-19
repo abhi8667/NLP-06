@@ -1,0 +1,103 @@
+{
+  "root": "C:\\Hacks\\NLP_06\\physioNet",
+  "sample_per_set": 800,
+  "sets": {
+    "training_setA": {
+      "patients_sampled": 800,
+      "patients_total": 20336,
+      "rows": 30672,
+      "stay_hours_median": 39.0,
+      "share_long_enough": 0.97125,
+      "coverage": {
+        "heart_rate": {
+          "column": "HR",
+          "coverage": 0.9196,
+          "state": "OK"
+        },
+        "bp_systolic": {
+          "column": "SBP",
+          "coverage": 0.8543,
+          "state": "OK"
+        },
+        "spo2": {
+          "column": "O2Sat",
+          "coverage": 0.8777,
+          "state": "OK"
+        },
+        "resp_rate": {
+          "column": "Resp",
+          "coverage": 0.895,
+          "state": "OK"
+        },
+        "temperature": {
+          "column": "Temp",
+          "coverage": 0.3323,
+          "state": "OK"
+        },
+        "glucose": {
+          "column": "Glucose",
+          "coverage": 0.1183,
+          "state": "SPARSE"
+        }
+      },
+      "news2_blocked_by": [],
+      "window_strict_share": 0.005,
+      "window_ffill_share": 0.8425,
+      "windows_strict": 107,
+      "windows_ffill": 15982,
+      "label_positive_hours": 0.01503,
+      "label_positive_patients": 0.0612,
+      "age_median": 65.53,
+      "male_share": 0.5853
+    },
+    "training_setB": {
+      "patients_sampled": 800,
+      "patients_total": 20000,
+      "rows": 30205,
+      "stay_hours_median": 37.0,
+      "share_long_enough": 0.96,
+      "coverage": {
+        "heart_rate": {
+          "column": "HR",
+          "coverage": 0.8739,
+          "state": "OK"
+        },
+        "bp_systolic": {
+          "column": "SBP",
+          "coverage": 0.8551,
+          "state": "OK"
+        },
+        "spo2": {
+          "column": "O2Sat",
+          "coverage": 0.8543,
+          "state": "OK"
+        },
+        "resp_rate": {
+          "column": "Resp",
+          "coverage": 0.778,
+          "state": "OK"
+        },
+        "temperature": {
+          "column": "Temp",
+          "coverage": 0.34,
+          "state": "OK"
+        },
+        "glucose": {
+          "column": "Glucose",
+          "coverage": 0.2124,
+          "state": "SPARSE"
+        }
+      },
+      "news2_blocked_by": [],
+      "window_strict_share": 0.0013,
+      "window_ffill_share": 0.7887,
+      "windows_strict": 579,
+      "windows_ffill": 15719,
+      "label_positive_hours": 0.014,
+      "label_positive_patients": 0.0563,
+      "age_median": 64.0,
+      "male_share": 0.5775
+    }
+  },
+  "verdict": "PASS"
+}

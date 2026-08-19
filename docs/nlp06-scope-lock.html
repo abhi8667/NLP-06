@@ -1,0 +1,414 @@
+<title>NLP-06 Scope Lock</title>
+<style>
+  :root {
+    --ground:#F7F8FA; --surface:#FFFFFF; --surface-sunk:#EFF2F6; --code-bg:#ECF0F5;
+    --ink:#121A24; --ink-muted:#586575; --ink-faint:#7C8899;
+    --rule:#DCE3EB; --rule-strong:#C3CEDA;
+    --accent:#0E7C86; --accent-soft:#DCEFF1; --accent-ink:#085158;
+    --warn:#A8660A; --warn-soft:#F7EBD8;
+    --crit:#A93A38; --crit-soft:#F8E4E3;
+    --ok:#2F7048; --ok-soft:#E0EFE5;
+    --shadow:0 1px 2px rgba(18,26,36,.05), 0 8px 24px -16px rgba(18,26,36,.28);
+    --font-display:"Sitka Display","Sitka Text",Sitka,Cambria,Constantia,Georgia,serif;
+    --font-body:"Segoe UI Variable Text","Segoe UI",-apple-system,BlinkMacSystemFont,system-ui,Arial,sans-serif;
+    --font-mono:"Cascadia Mono",Consolas,"SF Mono",ui-monospace,Menlo,monospace;
+    --measure:68ch; --page:1060px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0C1117; --surface:#131C25; --surface-sunk:#0F1720; --code-bg:#0A1017;
+      --ink:#E3EAF1; --ink-muted:#93A2B3; --ink-faint:#748699;
+      --rule:#223040; --rule-strong:#33455A;
+      --accent:#45BFC9; --accent-soft:#10333A; --accent-ink:#8CDCE3;
+      --warn:#DFA850; --warn-soft:#33260F;
+      --crit:#E8817E; --crit-soft:#37201F;
+      --ok:#6FBF8C; --ok-soft:#16301F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0C1117; --surface:#131C25; --surface-sunk:#0F1720; --code-bg:#0A1017;
+    --ink:#E3EAF1; --ink-muted:#93A2B3; --ink-faint:#748699;
+    --rule:#223040; --rule-strong:#33455A;
+    --accent:#45BFC9; --accent-soft:#10333A; --accent-ink:#8CDCE3;
+    --warn:#DFA850; --warn-soft:#33260F;
+    --crit:#E8817E; --crit-soft:#37201F;
+    --ok:#6FBF8C; --ok-soft:#16301F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--ground); color:var(--ink);
+         font-family:var(--font-body); font-size:16px; line-height:1.62; -webkit-font-smoothing:antialiased; }
+  .page { max-width:var(--page); margin:0 auto;
+          padding:clamp(2rem,5vw,4rem) clamp(1.1rem,4vw,2.5rem) 5rem;
+          display:flex; flex-direction:column; gap:clamp(2.25rem,4vw,3.25rem); }
+
+  h1,h2,h3,h4 { font-family:var(--font-display); font-weight:600; margin:0; line-height:1.18; text-wrap:balance; letter-spacing:-.006em; }
+  h1 { font-size:clamp(2rem,4.6vw,2.9rem); letter-spacing:-.02em; }
+  h2 { font-size:clamp(1.35rem,2.7vw,1.78rem); }
+  h3 { font-size:1.08rem; }
+  h4 { font-family:var(--font-body); font-size:.95rem; font-weight:650; }
+  p { margin:0; max-width:var(--measure); }
+  .eyebrow { font-family:var(--font-mono); font-size:.71rem; text-transform:uppercase; letter-spacing:.13em; color:var(--ink-faint); margin:0; }
+  code { font-family:var(--font-mono); font-size:.86em; background:var(--surface-sunk); border:1px solid var(--rule); border-radius:3px; padding:.06em .34em; }
+
+  header.masthead { display:flex; flex-direction:column; gap:.95rem; padding-bottom:1.7rem; border-bottom:2px solid var(--ink); }
+  .lede { font-size:clamp(1rem,1.7vw,1.14rem); color:var(--ink-muted); max-width:62ch; }
+  .stamp {
+    display:inline-flex; align-items:center; gap:.5rem; align-self:flex-start;
+    font-family:var(--font-mono); font-size:.68rem; text-transform:uppercase; letter-spacing:.1em;
+    padding:.32rem .7rem; border-radius:4px;
+    background:var(--ok-soft); color:var(--ok); border:1px solid var(--ok);
+  }
+
+  section { display:flex; flex-direction:column; gap:1.25rem; }
+  .section-head { display:flex; flex-direction:column; gap:.5rem; }
+
+  .authority {
+    border:1px solid var(--accent); background:var(--accent-soft);
+    border-radius:6px; padding:1.1rem 1.25rem; display:flex; flex-direction:column; gap:.6rem;
+  }
+  .authority p { color:var(--accent-ink); max-width:76ch; }
+  .authority .tag { font-family:var(--font-mono); font-size:.64rem; text-transform:uppercase; letter-spacing:.12em; color:var(--accent-ink); }
+
+  .table-wrap { overflow-x:auto; border:1px solid var(--rule); border-radius:6px; background:var(--surface); box-shadow:var(--shadow); }
+  table { border-collapse:collapse; width:100%; min-width:560px; font-size:.9rem; }
+  thead th { text-align:left; font-family:var(--font-mono); font-size:.66rem; text-transform:uppercase;
+             letter-spacing:.1em; color:var(--ink-faint); font-weight:600; padding:.65rem .9rem;
+             border-bottom:1px solid var(--rule-strong); background:var(--surface-sunk); white-space:nowrap; }
+  tbody td { padding:.62rem .9rem; border-bottom:1px solid var(--rule); vertical-align:top; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.mono, .mono { font-family:var(--font-mono); font-size:.84rem; font-variant-numeric:tabular-nums; }
+  .verdict { font-weight:650; white-space:nowrap; }
+  .v-in { color:var(--ok); } .v-out { color:var(--crit); } .v-open { color:var(--warn); }
+
+  /* spec blocks */
+  .spec { display:grid; gap:.9rem; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); }
+  .card {
+    background:var(--surface); border:1px solid var(--rule); border-radius:6px;
+    padding:1rem 1.15rem; box-shadow:var(--shadow);
+    display:flex; flex-direction:column; gap:.5rem; border-top:3px solid var(--accent);
+  }
+  .card.out { border-top-color:var(--crit); }
+  .card.open { border-top-color:var(--warn); }
+  .card h4 { color:var(--ink); }
+  .card ul { margin:0; padding-left:1.1rem; display:flex; flex-direction:column; gap:.28rem; }
+  .card li { font-size:.9rem; color:var(--ink-muted); }
+  .card li b { color:var(--ink); font-weight:650; }
+  .card li::marker { color:var(--ink-faint); }
+
+  .kv { display:grid; grid-template-columns:11rem 1fr; gap:.35rem .9rem; font-size:.91rem; }
+  .kv dt { font-family:var(--font-mono); font-size:.75rem; color:var(--ink-faint); padding-top:.15rem; }
+  .kv dd { margin:0; }
+  @media (max-width:620px) { .kv { grid-template-columns:1fr; gap:.1rem .9rem; } .kv dd { margin-bottom:.5rem; } }
+
+  .note { border-left:3px solid var(--warn); background:var(--warn-soft); padding:.7rem .95rem;
+          border-radius:0 4px 4px 0; font-size:.9rem; max-width:none; }
+  .note.crit { border-left-color:var(--crit); background:var(--crit-soft); }
+  .note .lab { font-family:var(--font-mono); font-size:.63rem; text-transform:uppercase; letter-spacing:.11em;
+               color:var(--warn); display:block; margin-bottom:.2rem; }
+  .note.crit .lab { color:var(--crit); }
+
+  footer { border-top:1px solid var(--rule); padding-top:1.2rem; font-size:.85rem; color:var(--ink-faint); max-width:var(--measure); }
+  @media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important; } }
+</style>
+
+<div class="page">
+
+  <header class="masthead">
+    <p class="eyebrow">NLP-06 · canonical specification · 18 Aug 2026</p>
+    <h1>NLP-06 Scope Lock</h1>
+    <p class="lede">One authoritative specification, replacing four documents that disagreed with each other. Every contradiction resolved, every decision recorded with the evidence behind it.</p>
+    <span class="stamp">supersedes all prior documents on these points</span>
+  </header>
+
+  <section>
+    <div class="authority">
+      <span class="tag">Precedence</span>
+      <p>Where this document and any of the <b>Project PRD</b>, <b>Technical Execution Plan</b>, <b>Prototype Guide</b> or <b>Research Guide</b> disagree, <b>this document wins.</b> Those four remain useful for background and detail, but they are no longer authoritative on anything specified here.</p>
+      <p>Decisions marked <span class="mono" style="color:var(--ok);font-weight:650">MEASURED</span> follow from tests run on the project hardware; the raw output is in <code>NLP_06/p0/results/</code>. Decisions marked <span class="mono" style="color:var(--warn);font-weight:650">OPEN</span> still need a human call and are listed in full at the end.</p>
+    </div>
+  </section>
+
+  <!-- ============ 1. RESOLVED CONTRADICTIONS ============ -->
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">1</p>
+      <h2>The seven contradictions, resolved</h2>
+      <p>Each row is a point where the source documents disagreed. The resolution is binding.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Conflict</th><th>Resolution</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="mono">1</td>
+            <td><b>Voice pipeline</b><br><span style="color:var(--ink-faint)">PRD: core feature · Prototype Guide: cut</span></td>
+            <td class="verdict v-out">CUT</td>
+            <td>Adds no research value and carries real integration risk. Speech input does not change what the privacy experiment measures. Declare as future work.</td>
+          </tr>
+          <tr>
+            <td class="mono">2</td>
+            <td><b>Lifestyle logging</b><br><span style="color:var(--ink-faint)">meals, exercise, medication reminders</span></td>
+            <td class="verdict v-out">CUT</td>
+            <td>Not present in any dataset now in scope, and not exercised by any contribution. Pure interface surface area.</td>
+          </tr>
+          <tr>
+            <td class="mono">3</td>
+            <td><b>Primary dataset</b><br><span style="color:var(--ink-faint)">PRD: MIMIC · Guides: Synthea</span></td>
+            <td class="verdict v-in">NEITHER —<br>PhysioNet 2019</td>
+            <td><span class="mono" style="color:var(--ok)">MEASURED</span> Synthea failed on cadence (154-day median gap) and on missing SpO2/temperature. PhysioNet/CinC 2019 was put through the same tests and passed.</td>
+          </tr>
+          <tr>
+            <td class="mono">4</td>
+            <td><b>Vector store</b><br><span style="color:var(--ink-faint)">pgvector vs ChromaDB</span></td>
+            <td class="verdict v-in">ChromaDB</td>
+            <td>File-based, no server to run, and the per-patient collection model maps directly onto the isolation requirement. Postgres adds an operational dependency for no gain at this scale.</td>
+          </tr>
+          <tr>
+            <td class="mono">5</td>
+            <td><b>Anomaly labelling</b><br><span style="color:var(--ink-faint)">single-vital thresholds vs NEWS2</span></td>
+            <td class="verdict v-in">Dataset labels<br>primary</td>
+            <td>Largely superseded: PhysioNet ships hourly sepsis labels, so no labelling scheme needs deriving. NEWS2 is retained as an optional secondary comparison; single-vital thresholds are dropped entirely.</td>
+          </tr>
+          <tr>
+            <td class="mono">6</td>
+            <td><b>Federation realism</b><br><span style="color:var(--ink-faint)">in-process vs containers</span></td>
+            <td class="verdict v-in">Containers<br>over gRPC</td>
+            <td><span class="mono" style="color:var(--ok)">MEASURED</span> The simulation backend needs a heavy dependency that is not installed, and the deployment route is what the paper's federation claim rests on. Building simulation first means building twice.</td>
+          </tr>
+          <tr>
+            <td class="mono">7</td>
+            <td><b>LLM temperature</b><br><span style="color:var(--ink-faint)">0.1 vs 0.2</span></td>
+            <td class="verdict v-in">0.2</td>
+            <td>Matches the peer-reviewed study being built on, which is easier to defend than an unexplained deviation. Our own benchmark showed hallucination occurring <em>at</em> 0.1, so the lower value's safety advantage is unevidenced — grounding and verification do that work, not decoding temperature.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ 2. SCOPE ============ -->
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">2</p>
+      <h2>Locked scope</h2>
+    </div>
+    <div class="spec">
+      <div class="card">
+        <h4>In scope</h4>
+        <ul>
+          <li><b>Patient chat</b> — questions answered from that patient's own record only</li>
+          <li><b>Clinician dashboard</b> — ranked alerts with drill-down</li>
+          <li><b>Alert → summary bridge</b> — the contribution with no analogue in prior work</li>
+          <li><b>Federated detector</b> — sequence models trained across sites</li>
+          <li><b>Differential privacy</b> — DP-SGD with a privacy budget sweep</li>
+          <li><b>Real-signal cross-check</b> — PTB-XL, unchanged</li>
+          <li><b>Lab report ingestion</b> — PDF into the retrieval store</li>
+        </ul>
+      </div>
+      <div class="card out">
+        <h4>Out of scope</h4>
+        <ul>
+          <li><b>Voice input and output</b> — future work</li>
+          <li><b>Meal, exercise and calorie logging</b></li>
+          <li><b>Medication and appointment reminders</b></li>
+          <li><b>Federated fine-tuning of the language model</b> — not feasible at this scale</li>
+          <li><b>Interface polish</b> — functional demo only; rigour lives in the experiments</li>
+          <li><b>EHR / FHIR integration</b> — future work</li>
+          <li><b>Live clinical deployment</b> — future work</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 3. DATA ============ -->
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">3</p>
+      <h2>Locked data specification</h2>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Parameter</th><th>Value</th><th>Source</th></tr></thead>
+        <tbody>
+          <tr><td>Primary dataset</td><td class="mono">PhysioNet/CinC 2019</td><td>ODbL, open access, no credentialing — licence verified directly</td></tr>
+          <tr><td>Clinical task</td><td class="mono">Sepsis onset prediction</td><td>Changed from generic deterioration; contributions unaffected</td></tr>
+          <tr><td>Patients</td><td class="mono">40,336</td><td>20,336 site A + 20,000 site B</td></tr>
+          <tr><td>Federated clients</td><td class="mono">2 real hospital systems</td><td>Optionally subdivided — see open items</td></tr>
+          <tr><td>Labels</td><td class="mono">SepsisLabel, hourly</td><td>Provided by the dataset</td></tr>
+          <tr><td>Positive rate</td><td class="mono">1.5% of hours · 6% of patients</td><td><span class="mono" style="color:var(--ok)">MEASURED</span> — not the 10–15% assumed</td></tr>
+          <tr><td>Vitals used</td><td class="mono">HR, SBP, O2Sat, Resp, Temp, Glucose</td><td>Maps to the existing six-channel input</td></tr>
+          <tr><td>Window</td><td class="mono">12 timesteps × 6 vitals, stride 1</td><td>Unchanged</td></tr>
+          <tr><td>Imputation</td><td class="mono">Forward-fill, declared</td><td><span class="mono" style="color:var(--ok)">MEASURED</span> strict simultaneity gives &lt;1% of patients; forward-fill gives ~80%</td></tr>
+          <tr><td>Usable windows</td><td class="mono">~800,000</td><td>Subsample for compute — see §5</td></tr>
+          <tr><td>Real-signal validation</td><td class="mono">PTB-XL via interval features</td><td>Mapping validated in P0</td></tr>
+          <tr><td>Encryption at rest</td><td class="mono">Encrypted volume (LUKS / Docker)</td><td>Covers ChromaDB and SQLite together</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <span class="lab">Must appear in the paper</span>
+      Forward-fill imputation is now a declared method, not an implementation detail. Report the per-vital imputation rate: temperature is carried forward roughly two hours in three, glucose four in five. Silent imputation at these rates would be a legitimate reviewer objection.
+    </div>
+  </section>
+
+  <!-- ============ 4. STACK ============ -->
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">4</p>
+      <h2>Locked technology stack</h2>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Layer</th><th>Choice</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Detector models</td><td class="mono">DPLSTM, DPGRU, CNN</td><td><span class="mono" style="color:var(--crit)">CORRECTED</span> standard <code>nn.LSTM</code>/<code>nn.GRU</code> are rejected by the privacy library</td></tr>
+          <tr><td>Model output</td><td class="mono">raw logits</td><td><span class="mono" style="color:var(--crit)">CORRECTED</span> the inherited spec double-applied sigmoid, shrinking gradients 4.2×</td></tr>
+          <tr><td>Loss</td><td class="mono">BCEWithLogitsLoss + pos_weight</td><td>Recalibrate for ~1.5% prevalence, not 10–15%</td></tr>
+          <tr><td>Federated framework</td><td class="mono">Flower, deployment route</td><td>Containers over gRPC; simulation backend skipped</td></tr>
+          <tr><td>Privacy</td><td class="mono">Opacus DP-SGD, Rényi accountant</td><td>See §5 for the accounting protocol</td></tr>
+          <tr><td>LLM — alerts</td><td class="mono">Llama 3.1 8B (Q4)</td><td><span class="mono" style="color:var(--ok)">MEASURED</span> 21 tok/s, ~25% on CPU; caught the desaturation the 3B missed</td></tr>
+          <tr><td>LLM — patient chat</td><td class="mono">Llama 3.2 3B (Q4)</td><td><span class="mono" style="color:var(--ok)">MEASURED</span> 66 tok/s, fully on GPU</td></tr>
+          <tr><td>LLM temperature</td><td class="mono">0.2</td><td>Both models, matching the cited precedent</td></tr>
+          <tr><td>Runtime</td><td class="mono">Ollama</td><td>Local, offline</td></tr>
+          <tr><td>Vector store</td><td class="mono">ChromaDB</td><td>Per-patient collections; pgvector dropped</td></tr>
+          <tr><td>Relational store</td><td class="mono">SQLite + AES-256</td><td>PostgreSQL dropped</td></tr>
+          <tr><td>Backend / UI</td><td class="mono">FastAPI + Streamlit</td><td>React dropped</td></tr>
+          <tr><td>Hardware</td><td class="mono">RTX 4050, 6 GB</td><td>Detector needs 0.03 GB, so it coexists with the LLM</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ 5. EXPERIMENT ============ -->
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">5</p>
+      <h2>Locked experimental protocol</h2>
+    </div>
+
+    <div class="spec">
+      <div class="card">
+        <h4>Privacy accounting — binding protocol</h4>
+        <ul>
+          <li>Size the noise multiplier <b>once</b> for <code>rounds × local_epochs × steps</code>, then hold it fixed</li>
+          <li>Persist each client's accountant across rounds via <code>state_dict()</code> / <code>load_state_dict()</code></li>
+          <li>Report the <b>worst-case site's</b> ε, never the mean</li>
+          <li>State the privacy unit explicitly: this is <b>window-level</b>, not patient-level</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>Metrics</h4>
+        <ul>
+          <li><b>AUPRC</b> is the headline metric — <span class="mono" style="color:var(--crit)">CHANGED</span> from AUC-ROC</li>
+          <li><b>False negative rate</b> reported separately as the clinical measure</li>
+          <li>F1, precision, recall retained as secondary</li>
+          <li>Every run records achieved ε alongside target ε</li>
+          <li>All results as mean ± std across seeds; never single runs</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>Compute discipline</h4>
+        <ul>
+          <li>Full grid measures ~<b>22 days</b> on available hardware — must be trimmed</li>
+          <li>Cut <b>rounds and dataset size before scope</b>: each saves 50%, versus 17–24% for dropping model types</li>
+          <li>Verify convergence by round 50 before paying for 100</li>
+          <li>Never trade away PTB-XL validation or the seed count</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>Summary evaluation</h4>
+        <ul>
+          <li><b>Claim-level fact verification is mandatory</b> — <span class="mono" style="color:var(--crit)">CHANGED</span></li>
+          <li>Keyword matching is proven inadequate: it scored two fabricating models as clean</li>
+          <li>Human rubric with two raters and inter-rater agreement</li>
+          <li>LLM-as-judge as the third layer</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="note crit">
+      <span class="lab">The correction that matters most</span>
+      The natural way to write the federated privacy code restarts the accountant every round, reporting a flat ε that <b>under-states privacy loss by 2.43× after only six rounds</b> — and it fails in the flattering direction, so it looks correct. The protocol above is not a preference; without it the paper states a false number.
+    </div>
+  </section>
+
+  <!-- ============ 6. OPEN ============ -->
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">6</p>
+      <h2>Open items — decisions still required</h2>
+      <p>Everything above is settled. These are not, and each needs a person rather than a measurement.</p>
+    </div>
+
+    <div class="spec">
+      <div class="card open">
+        <h4>1 · Statistical plan for the architecture comparison</h4>
+        <ul>
+          <li>As specified — pairwise tests at 5 seeds with correction for 12 comparisons — <b>no experimental outcome can reach significance</b>, because the smallest attainable p sits above the corrected threshold</li>
+          <li><b>Recommended:</b> one omnibus model over architecture × ε, with per-ε effect sizes reported descriptively</li>
+          <li>Blocking, because it determines the seed count and therefore the compute budget</li>
+        </ul>
+      </div>
+      <div class="card open">
+        <h4>2 · Base paper citations b2 and b3</h4>
+        <ul>
+          <li>The PRD and Research Guide give <b>different titles for the same tags</b>, and different years for b3 (Dec 2024 vs 2025)</li>
+          <li>Either two different papers are cited under one label, or one document has the reference wrong</li>
+          <li>Resolve by pulling up the actual papers before the related-work section is written</li>
+        </ul>
+      </div>
+      <div class="card open">
+        <h4>3 · Number of federated clients</h4>
+        <ul>
+          <li>Two real hospital systems is the honest minimum</li>
+          <li>They differ in <b>measurement practice</b> rather than patient population — glucose recorded 11.8% vs 21.2% of hours</li>
+          <li>Subdividing by ICU unit or age band gives more clients and stronger heterogeneity, at the cost of the "real institutions" claim</li>
+        </ul>
+      </div>
+      <div class="card open">
+        <h4>4 · Mentor sign-off on the dataset switch</h4>
+        <ul>
+          <li>This reverses what the Prototype Guide decided, so it should be agreed rather than presented as done</li>
+          <li>The evidence is strong: Synthea's 154-day gaps and absent SpO2 versus PhysioNet's 86% coverage and provided labels</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 7. PROVENANCE ============ -->
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">7</p>
+      <h2>Where these decisions came from</h2>
+      <p>Every measured claim traces to a test whose output is on disk. Nothing here rests on assertion alone.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Finding</th><th>Evidence file</th></tr></thead>
+        <tbody>
+          <tr><td>Environment, GPU, library versions</td><td class="mono">results/00_env.json</td></tr>
+          <tr><td>Synthea unusable — cadence and coverage</td><td class="mono">results/s1_cadence.json</td></tr>
+          <tr><td>Layer incompatibility; double-sigmoid bug; DP training works</td><td class="mono">results/s2a_dp_single_node.json</td></tr>
+          <tr><td>Federated averaging converges</td><td class="mono">results/s2b_fed_nodp.json</td></tr>
+          <tr><td>Privacy accounting under-reports 2.43×</td><td class="mono">results/s2c_fed_dp.json</td></tr>
+          <tr><td>Federated build route decision</td><td class="mono">results/s2d_flower_check.json</td></tr>
+          <tr><td>PTB-XL input mapping</td><td class="mono">results/s3_ptbxl.json</td></tr>
+          <tr><td>Compute budget and cut sensitivity</td><td class="mono">results/s4_timing.json</td></tr>
+          <tr><td>Model speed, placement, hallucination comparison</td><td class="mono">results/s5_llm_benchmark.json</td></tr>
+          <tr><td>PhysioNet coverage, cadence, labels, site variation</td><td class="mono">results/s6_physionet_cadence.json</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    Canonical specification for NLP-06, consolidating the Project PRD, Technical Execution Plan, Prototype Guide and Research Guide. Items marked MEASURED derive from tests run on the project hardware during P0; items marked OPEN require a human decision. Update this document when an open item closes, rather than recording the decision elsewhere.
+  </footer>
+
+</div>

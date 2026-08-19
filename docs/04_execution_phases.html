@@ -1,0 +1,951 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NLP-06 Execution Phases</title>
+<style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body { margin: 0; }
+    img, svg, video { max-width: 100%; height: auto; }
+    table { border-collapse: collapse; }
+</style>
+<style>
+  :root {
+    --ground:        #F7F8FA;
+    --surface:       #FFFFFF;
+    --surface-sunk:  #EFF2F6;
+    --ink:           #121A24;
+    --ink-muted:     #586575;
+    --ink-faint:     #7C8899;
+    --rule:          #DCE3EB;
+    --rule-strong:   #C3CEDA;
+    --accent:        #0E7C86;
+    --accent-soft:   #DCEFF1;
+    --accent-ink:    #085158;
+    --warn:          #A8660A;
+    --warn-soft:     #F7EBD8;
+    --crit:          #A93A38;
+    --crit-soft:     #F8E4E3;
+    --ok:            #2F7048;
+    --ok-soft:       #E0EFE5;
+    --shadow:        0 1px 2px rgba(18, 26, 36, .05), 0 8px 24px -16px rgba(18, 26, 36, .28);
+
+    --font-display: "Sitka Display", "Sitka Text", Sitka, Cambria, Constantia, Georgia, serif;
+    --font-body: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "Cascadia Mono", Consolas, "SF Mono", ui-monospace, "Roboto Mono", Menlo, monospace;
+
+    --measure: 68ch;
+    --page: 1080px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:       #0C1117;
+      --surface:      #131C25;
+      --surface-sunk: #0F1720;
+      --ink:          #E3EAF1;
+      --ink-muted:    #93A2B3;
+      --ink-faint:    #748699;
+      --rule:         #223040;
+      --rule-strong:  #33455A;
+      --accent:       #45BFC9;
+      --accent-soft:  #10333A;
+      --accent-ink:   #8CDCE3;
+      --warn:         #DFA850;
+      --warn-soft:    #33260F;
+      --crit:         #E8817E;
+      --crit-soft:    #37201F;
+      --ok:           #6FBF8C;
+      --ok-soft:      #16301F;
+      --shadow:       0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:       #0C1117;
+    --surface:      #131C25;
+    --surface-sunk: #0F1720;
+    --ink:          #E3EAF1;
+    --ink-muted:    #93A2B3;
+    --ink-faint:    #748699;
+    --rule:         #223040;
+    --rule-strong:  #33455A;
+    --accent:       #45BFC9;
+    --accent-soft:  #10333A;
+    --accent-ink:   #8CDCE3;
+    --warn:         #DFA850;
+    --warn-soft:    #33260F;
+    --crit:         #E8817E;
+    --crit-soft:    #37201F;
+    --ok:           #6FBF8C;
+    --ok-soft:      #16301F;
+    --shadow:       0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: var(--page);
+    margin: 0 auto;
+    padding: clamp(2rem, 5vw, 4.5rem) clamp(1.1rem, 4vw, 2.5rem) 6rem;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(2.75rem, 5vw, 4rem);
+  }
+
+  /* ---------- type ---------- */
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    text-wrap: balance;
+    margin: 0;
+    line-height: 1.18;
+    letter-spacing: -.006em;
+  }
+  h1 { font-size: clamp(2.1rem, 5vw, 3.15rem); letter-spacing: -.02em; }
+  h2 { font-size: clamp(1.5rem, 2.9vw, 1.95rem); }
+  h3 { font-size: 1.16rem; font-weight: 600; }
+  h4 { font-size: 1rem; font-family: var(--font-body); font-weight: 650; }
+  p  { margin: 0; max-width: var(--measure); }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: .715rem;
+    text-transform: uppercase;
+    letter-spacing: .13em;
+    color: var(--ink-faint);
+    margin: 0;
+  }
+
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  code, .mono { font-family: var(--font-mono); font-size: .875em; }
+  code {
+    background: var(--surface-sunk);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: .06em .34em;
+  }
+
+  /* ---------- masthead ---------- */
+  .masthead {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    padding-bottom: 2rem;
+    border-bottom: 2px solid var(--ink);
+  }
+  .masthead .lede {
+    font-size: clamp(1.02rem, 1.7vw, 1.16rem);
+    color: var(--ink-muted);
+    max-width: 62ch;
+  }
+  .masthead-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem 1.4rem;
+    font-family: var(--font-mono);
+    font-size: .74rem;
+    letter-spacing: .05em;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+  }
+
+  /* ---------- generic section ---------- */
+  section { display: flex; flex-direction: column; gap: 1.5rem; }
+  .section-head { display: flex; flex-direction: column; gap: .55rem; }
+
+  /* ---------- callout: findings ---------- */
+  .findings { display: grid; gap: 1rem; }
+  .finding {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--crit);
+    border-radius: 4px;
+    padding: 1.1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: .55rem;
+    box-shadow: var(--shadow);
+  }
+  .finding.is-warn { border-left-color: var(--warn); }
+  .finding-tag {
+    font-family: var(--font-mono);
+    font-size: .68rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--crit);
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  .finding.is-warn .finding-tag { color: var(--warn); }
+  .finding h3 { font-family: var(--font-body); font-size: 1.02rem; font-weight: 650; }
+  .finding p { font-size: .945rem; color: var(--ink-muted); max-width: 78ch; }
+  .finding .verdict {
+    font-size: .9rem;
+    color: var(--ink);
+    border-top: 1px dashed var(--rule-strong);
+    padding-top: .55rem;
+    max-width: 78ch;
+  }
+  .verdict strong { font-weight: 650; }
+
+  /* ---------- diagram ---------- */
+  .diagram-wrap {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    padding: 1.4rem 1rem 1rem;
+    overflow-x: auto;
+    box-shadow: var(--shadow);
+  }
+  .diagram-wrap svg { display: block; min-width: 780px; width: 100%; height: auto; }
+  .svg-node       { fill: var(--surface-sunk); stroke: var(--rule-strong); stroke-width: 1; }
+  .svg-node-crit  { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+  .svg-node-gate  { fill: var(--crit-soft); stroke: var(--crit); stroke-width: 1.5; }
+  .svg-label      { fill: var(--ink); font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
+  .svg-sub        { fill: var(--ink-muted); font-family: var(--font-body); font-size: 10.5px; }
+  .svg-line       { stroke: var(--rule-strong); stroke-width: 1.4; fill: none; }
+  .svg-line-crit  { stroke: var(--accent); stroke-width: 2.4; fill: none; }
+  .svg-axis       { fill: var(--ink-faint); font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; }
+  .legend {
+    display: flex; flex-wrap: wrap; gap: .4rem 1.5rem;
+    font-size: .78rem; color: var(--ink-muted);
+    padding: .85rem .3rem 0;
+    border-top: 1px solid var(--rule);
+    margin-top: .9rem;
+  }
+  .legend span { display: inline-flex; align-items: center; gap: .45rem; }
+  .swatch { width: 22px; height: 3px; border-radius: 2px; background: var(--rule-strong); }
+  .swatch.crit { background: var(--accent); height: 4px; }
+  .swatch.gate { background: var(--crit); height: 4px; }
+
+  /* ---------- phases ---------- */
+  .phases { display: flex; flex-direction: column; gap: 1rem; }
+  .phase {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 4px 1fr;
+  }
+  .phase-stripe { background: var(--rule-strong); }
+  .phase[data-track="both"]     .phase-stripe { background: var(--accent); }
+  .phase[data-track="product"]  .phase-stripe { background: var(--warn); }
+  .phase[data-track="research"] .phase-stripe { background: var(--ok); }
+  .phase-body { padding: 1.2rem 1.35rem 1.35rem; display: flex; flex-direction: column; gap: .95rem; }
+
+  .phase-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: .55rem .85rem; }
+  .phase-id {
+    font-family: var(--font-mono);
+    font-size: .82rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: .04em;
+  }
+  .phase-head h3 { flex: 1 1 16ch; }
+  .chip {
+    font-family: var(--font-mono);
+    font-size: .655rem;
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    padding: .2rem .5rem;
+    border-radius: 3px;
+    border: 1px solid var(--rule-strong);
+    color: var(--ink-muted);
+    background: var(--surface-sunk);
+    white-space: nowrap;
+  }
+  .chip.owner-both     { color: var(--accent-ink); background: var(--accent-soft); border-color: var(--accent); }
+  .chip.owner-product  { color: var(--warn); background: var(--warn-soft); border-color: var(--warn); }
+  .chip.owner-research { color: var(--ok); background: var(--ok-soft); border-color: var(--ok); }
+  .chip.critpath      { color: var(--crit); background: var(--crit-soft); border-color: var(--crit); }
+
+  .phase-objective { font-size: .96rem; color: var(--ink-muted); max-width: 80ch; }
+
+  .task-list { margin: 0; padding-left: 1.15rem; display: flex; flex-direction: column; gap: .3rem; }
+  .task-list li { font-size: .93rem; max-width: 84ch; }
+  .task-list li::marker { color: var(--ink-faint); }
+
+  .gate {
+    background: var(--surface-sunk);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: .8rem .95rem;
+    display: flex;
+    flex-direction: column;
+    gap: .4rem;
+  }
+  .gate-label {
+    font-family: var(--font-mono);
+    font-size: .655rem;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--ink-faint);
+  }
+  .gate ul { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: .25rem; }
+  .gate li { font-size: .885rem; color: var(--ink); }
+  .gate li::marker { color: var(--accent); }
+
+  .depends {
+    font-family: var(--font-mono);
+    font-size: .73rem;
+    color: var(--ink-faint);
+    letter-spacing: .02em;
+  }
+
+  /* ---------- tables ---------- */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 5px; background: var(--surface); box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: .9rem; }
+  thead th {
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: .68rem;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--ink-faint);
+    font-weight: 600;
+    padding: .7rem .9rem;
+    border-bottom: 1px solid var(--rule-strong);
+    background: var(--surface-sunk);
+    white-space: nowrap;
+  }
+  tbody td { padding: .68rem .9rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num { font-variant-numeric: tabular-nums; font-family: var(--font-mono); font-size: .84rem; white-space: nowrap; }
+  .verdict-cell { font-weight: 650; white-space: nowrap; }
+  .v-keep { color: var(--ok); }
+  .v-cut  { color: var(--crit); }
+
+  /* ---------- ladder ---------- */
+  .ladder { display: flex; flex-direction: column; gap: .5rem; counter-reset: rung; margin: 0; padding: 0; list-style: none; }
+  .ladder li {
+    display: grid;
+    grid-template-columns: 2.4rem 1fr;
+    gap: .9rem;
+    align-items: start;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: .7rem .9rem;
+    font-size: .93rem;
+  }
+  .ladder li::before {
+    counter-increment: rung;
+    content: counter(rung);
+    font-family: var(--font-mono);
+    font-size: .95rem;
+    font-weight: 700;
+    color: var(--ink-faint);
+    text-align: center;
+    padding-top: .05rem;
+  }
+  .ladder li.never { border-color: var(--crit); background: var(--crit-soft); }
+  .ladder li.never::before { content: "—"; color: var(--crit); }
+  .ladder b { font-weight: 650; }
+  .ladder .why { color: var(--ink-muted); display: block; font-size: .875rem; }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-top: 1.4rem;
+    font-size: .86rem;
+    color: var(--ink-faint);
+    max-width: var(--measure);
+  }
+
+  @media (max-width: 640px) {
+    .phase { grid-template-columns: 3px 1fr; }
+    .phase-body { padding: 1rem 1rem 1.15rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<nav style="max-width:1060px;margin:0 auto;padding:1rem clamp(1.1rem,4vw,2.5rem) 0;font-family:var(--font-mono);font-size:.72rem;letter-spacing:.06em;">
+  <a href="index.html" style="color:var(--accent);text-decoration:none;">&larr; ALL DOCUMENTS</a>
+</nav>
+<div class="page">
+
+  <header class="masthead">
+    <p class="eyebrow">Execution plan · planning only, no implementation</p>
+    <h1>NLP-06 Execution Phases</h1>
+    <p class="lede">A dependency-ordered build plan for the privacy-preserving ward assistant — ten phases, each with a named owner and a falsifiable exit gate. Reconciles the PRD, Technical Execution Plan, Prototype Guide, and Research Guide into one sequence.</p>
+    <div class="masthead-meta">
+      <span>2-person team</span>
+      <span>Person A · product</span>
+      <span>Person B · research</span>
+      <span>Mentor: Dr. M. S. Srividya</span>
+    </div>
+  </header>
+
+  <!-- ============ FINDINGS ============ -->
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">Read this first</p>
+      <h2>Three assumptions that must be tested before the plan is committed</h2>
+      <p>Each of these is load-bearing for a headline claim, and each is currently unverified across all four documents. Discovering any of them in Phase 4 costs weeks; discovering them in Phase 0 costs days.</p>
+    </div>
+
+    <div class="findings">
+
+      <article class="finding">
+        <p class="finding-tag">Blocker risk · affects the core novelty claim</p>
+        <h3>Synthea may not emit vitals at ward-telemetry cadence</h3>
+        <p>Synthea generates observations tied to <em>encounters</em>, not continuous monitoring. A generated patient may have vitals recorded months or years apart. The plan assumes 12-timestep sliding windows with stride 1 read as short-horizon ward telemetry — if the real inter-observation gap is measured in months, those windows are longitudinal life-history, not monitoring data.</p>
+        <p class="verdict"><strong>Why it matters:</strong> the gap claimed against b5 is that no clinical RAG study integrates <em>real-time telemetry</em>. If the primary dataset has no telemetry, that claim cannot be made on it. <strong>Resolve in P0:</strong> generate 50 patients, plot the distribution of inter-observation gaps per vital, and decide between synthesizing intra-encounter telemetry, reframing the temporal unit honestly, or escalating MIMIC-IV back to primary.</p>
+      </article>
+
+      <article class="finding">
+        <p class="finding-tag">Design gap · undefined in every document</p>
+        <h3>PTB-XL has no defined mapping onto the model input</h3>
+        <p>PTB-XL is 10-second 12-lead ECG waveforms at 100/500&nbsp;Hz. The models take a <code>[batch, 12, 6]</code> tensor of six tabular vitals. The Research Guide says to "process into the same window format so the same model code runs on it," but no mapping exists that is both mechanical and physiologically meaningful.</p>
+        <p class="verdict"><strong>Options, best first:</strong> derive per-interval features (rate, variability, interval durations, ST level) into 12&nbsp;×&nbsp;N windows — keeps the architecture, defensible; or accept a different input width for PTB-XL and claim only that the <em>shape of the ε-trend</em> transfers, not absolute F1. Naively downsampling raw leads into 12&nbsp;×&nbsp;12 is not defensible. <strong>Decide in P0</strong>, because P2 builds the pipeline.</p>
+      </article>
+
+      <article class="finding is-warn">
+        <p class="finding-tag">Statistical defect · C2 cannot reach significance as specified</p>
+        <h3>The stated test for C2 is underpowered by construction</h3>
+        <p>The Research Guide specifies Mann-Whitney U on 5 seeds vs 5 seeds, at 6 ε levels × 2 comparisons, with Bonferroni correction. With n&nbsp;=&nbsp;5 per group there are only C(10,5)&nbsp;=&nbsp;252 arrangements, so the smallest attainable two-sided p is 2/252&nbsp;≈&nbsp;0.0079 — obtained only under perfect separation. The Bonferroni threshold for 12 tests is 0.05/12&nbsp;≈&nbsp;0.0042. The floor sits above the threshold: <em>no possible experimental outcome can reach corrected significance.</em></p>
+        <p class="verdict"><strong>Fix, best first:</strong> replace the 12 pairwise tests with one omnibus model over architecture × ε (aligned rank transform, or a mixed model on seed) — more powerful and the better-matched question anyway; report per-ε effect sizes with confidence intervals as description, not inference. If pairwise tests are kept, either raise to 6+ seeds or cut to 3 ε levels of interest. <strong>Decide in P0</strong>, because the seed count fixes the compute budget.</p>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ CRITICAL PATH ============ -->
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">Sequencing</p>
+      <h2>The critical path runs through the data freeze</h2>
+      <p>Phase 4 is the long pole and it is serialized behind an immutable dataset. Every hour saved before the freeze is an hour the campaign starts earlier; every change made after it invalidates completed runs. The product track runs parallel and off the critical path — which means Person A has slack that should be spent on the campaign and figures, not on UI polish.</p>
+    </div>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 900 290" role="img" aria-labelledby="cp-title cp-desc">
+        <title id="cp-title">Phase dependency graph</title>
+        <desc id="cp-desc">P0 through P2 are shared. P2 is a hard data freeze gate. The critical path continues P3B, P4, P7, P8, P9. The product track P3A, P5, P6 runs in parallel and rejoins at P7.</desc>
+
+        <text class="svg-axis" x="8" y="18">SHARED</text>
+        <text class="svg-axis" x="8" y="112">RESEARCH · CRITICAL PATH</text>
+        <text class="svg-axis" x="8" y="220">PRODUCT · PARALLEL</text>
+
+        <!-- shared row -->
+        <g>
+          <rect class="svg-node" x="8" y="30" width="104" height="44" rx="4"/>
+          <text class="svg-label" x="20" y="49">P0</text>
+          <text class="svg-sub" x="20" y="64">Spikes</text>
+
+          <rect class="svg-node" x="140" y="30" width="104" height="44" rx="4"/>
+          <text class="svg-label" x="152" y="49">P1</text>
+          <text class="svg-sub" x="152" y="64">Scope lock</text>
+
+          <rect class="svg-node-gate" x="272" y="30" width="128" height="44" rx="4"/>
+          <text class="svg-label" x="284" y="49">P2</text>
+          <text class="svg-sub" x="284" y="64">Data → FREEZE</text>
+        </g>
+
+        <path class="svg-line" d="M112 52 H140"/>
+        <path class="svg-line" d="M244 52 H272"/>
+
+        <!-- freeze fan-out -->
+        <path class="svg-line-crit" d="M336 74 V104 H400"/>
+        <path class="svg-line" d="M336 74 V212 H400"/>
+
+        <!-- research row -->
+        <g>
+          <rect class="svg-node-crit" x="400" y="82" width="104" height="44" rx="4"/>
+          <text class="svg-label" x="412" y="101">P3B</text>
+          <text class="svg-sub" x="412" y="116">FL+DP harness</text>
+
+          <rect class="svg-node-crit" x="532" y="82" width="104" height="44" rx="4"/>
+          <text class="svg-label" x="544" y="101">P4</text>
+          <text class="svg-sub" x="544" y="116">Campaign</text>
+
+          <rect class="svg-node-crit" x="664" y="82" width="104" height="44" rx="4"/>
+          <text class="svg-label" x="676" y="101">P7</text>
+          <text class="svg-sub" x="676" y="116">Analysis</text>
+
+          <rect class="svg-node-crit" x="796" y="82" width="96" height="44" rx="4"/>
+          <text class="svg-label" x="808" y="101">P8</text>
+          <text class="svg-sub" x="808" y="116">Paper</text>
+        </g>
+
+        <path class="svg-line-crit" d="M504 104 H532"/>
+        <path class="svg-line-crit" d="M636 104 H664"/>
+        <path class="svg-line-crit" d="M768 104 H796"/>
+
+        <!-- product row -->
+        <g>
+          <rect class="svg-node" x="400" y="190" width="104" height="44" rx="4"/>
+          <text class="svg-label" x="412" y="209">P3A</text>
+          <text class="svg-sub" x="412" y="224">RAG + UI</text>
+
+          <rect class="svg-node" x="532" y="190" width="104" height="44" rx="4"/>
+          <text class="svg-label" x="544" y="209">P5</text>
+          <text class="svg-sub" x="544" y="224">C3 bridge</text>
+
+          <rect class="svg-node" x="664" y="190" width="104" height="44" rx="4"/>
+          <text class="svg-label" x="676" y="209">P6</text>
+          <text class="svg-sub" x="676" y="224">C3 eval</text>
+        </g>
+
+        <path class="svg-line" d="M504 212 H532"/>
+        <path class="svg-line" d="M636 212 H664"/>
+        <!-- early checkpoint feed from P3B down to P5 -->
+        <path class="svg-line" stroke-dasharray="4 4" d="M452 126 V190"/>
+        <text class="svg-sub" x="458" y="160">first checkpoint</text>
+        <!-- rejoin -->
+        <path class="svg-line" d="M768 212 H784 V126"/>
+
+        <!-- tail -->
+        <rect class="svg-node-crit" x="796" y="190" width="96" height="44" rx="4"/>
+        <text class="svg-label" x="808" y="209">P9</text>
+        <text class="svg-sub" x="808" y="224">Defense</text>
+        <path class="svg-line-crit" d="M844 126 V190"/>
+      </svg>
+
+      <div class="legend">
+        <span><i class="swatch crit"></i> critical path</span>
+        <span><i class="swatch"></i> parallel / feed-in</span>
+        <span><i class="swatch gate"></i> hard freeze gate</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PHASES ============ -->
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">The plan</p>
+      <h2>Ten phases</h2>
+      <p>Organized by dependency rather than by week, so the sequence survives schedule slip. A phase is done when its exit gate passes — not when its tasks feel finished.</p>
+    </div>
+
+    <div class="phases">
+
+      <!-- P0 -->
+      <article class="phase" data-track="both">
+        <div class="phase-stripe"></div>
+        <div class="phase-body">
+          <div class="phase-head">
+            <span class="phase-id">P0</span>
+            <h3>Feasibility spikes</h3>
+            <span class="chip owner-both">A + B</span>
+            <span class="chip critpath">critical path</span>
+          </div>
+          <p class="phase-objective">Kill or confirm the assumptions the rest of the plan rests on, before any of it is built. Time-box hard — the deliverable is four written answers, not four working systems.</p>
+          <ul class="task-list">
+            <li><b>S1 · Telemetry cadence.</b> Generate a small Synthea cohort; measure the inter-observation gap distribution per vital. Decide the temporal unit the paper will claim.</li>
+            <li><b>S2 · Opacus × Flower × sequence models.</b> Get one ward node training two federated rounds with DP and a reported ε. Note that <code>nn.LSTM</code> is not supported by Opacus's grad-sampler — <code>DPLSTM</code>/<code>DPGRU</code> are the substitutes, and the accountant must carry state across rounds for a 100-round ε to mean anything.</li>
+            <li><b>S3 · PTB-XL mapping.</b> Choose and document how real ECG becomes model input.</li>
+            <li><b>S4 · Compute budget.</b> Wall-clock one full run on the actual hardware, multiply by the grid, and size the grid to fit the time available. DP-SGD computes per-sample gradients and is far slower than standard training.</li>
+          </ul>
+          <div class="gate">
+            <span class="gate-label">Exit gate</span>
+            <ul>
+              <li>All four spikes answered in writing, with the decision recorded — no open "we'll figure it out later."</li>
+              <li>Final experimental grid size fixed (models × ε levels × seeds) and shown to fit the measured compute budget.</li>
+              <li>Statistical plan for C2 revised and agreed.</li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+      <!-- P1 -->
+      <article class="phase" data-track="both">
+        <div class="phase-stripe"></div>
+        <div class="phase-body">
+          <div class="phase-head">
+            <span class="phase-id">P1</span>
+            <h3>Scope lock &amp; foundation</h3>
+            <span class="chip owner-both">A + B</span>
+            <span class="chip critpath">critical path</span>
+          </div>
+          <p class="phase-objective">Collapse four documents that currently disagree into one source of truth, and stand up the environment both members will work in.</p>
+          <ul class="task-list">
+            <li>Publish the reconciliation decisions (table below) as the single authoritative scope. Retire contradicting sections of the PRD rather than leaving both versions live.</li>
+            <li>Repository skeleton per the Prototype Guide layout; branch-per-track; pinned <code>requirements.txt</code>.</li>
+            <li>Ollama installed, model pulled, latency benchmarked on the demo machine.</li>
+            <li>Annotate b1–b5 and draft the related-work outline and gap table.</li>
+            <li>Decide whether to submit MIMIC credentialing at all — with Synthea as primary it is now optional insurance, not a dependency.</li>
+          </ul>
+          <div class="gate">
+            <span class="gate-label">Exit gate</span>
+            <ul>
+              <li>Both members and the mentor have signed off on one scope document; no feature is "maybe."</li>
+              <li>A clean checkout installs and runs a local LLM prompt end-to-end on both machines.</li>
+            </ul>
+          </div>
+          <p class="depends">depends on: P0</p>
+        </div>
+      </article>
+
+      <!-- P2 -->
+      <article class="phase" data-track="both">
+        <div class="phase-stripe"></div>
+        <div class="phase-body">
+          <div class="phase-head">
+            <span class="phase-id">P2</span>
+            <h3>Data pipeline → hard freeze</h3>
+            <span class="chip owner-both">A + B</span>
+            <span class="chip critpath">critical path</span>
+          </div>
+          <p class="phase-objective">Produce every dataset variant the project will ever use, then freeze them. This is the single most consequential gate in the plan: a labeling change after the campaign starts invalidates every completed run.</p>
+          <ul class="task-list">
+            <li>PhysioNet/CinC 2019 extraction; forward-fill imputation with the per-vital rate recorded, since that rate has to appear in the paper.</li>
+            <li>Labels come with the dataset — hourly sepsis onset. No labelling scheme needs deriving; NEWS2 is optional as a secondary comparison only.</li>
+            <li>Sliding windows; client partitioning by hospital system; report the realised class balance (~1.5% positive) and per-site differences, because both interact with DP noise.</li>
+            <li>Subsample the ~800,000 available windows to fit the compute budget, and record the sampling rule.</li>
+            <li>Encrypted volume (LUKS or encrypted Docker volume) with ChromaDB and SQLite both living inside it — this is what removes the encryption limitation from the paper.</li>
+            <li>Embed patient records into per-patient ChromaDB collections with strict <code>patient_id</code> metadata.</li>
+          </ul>
+          <div class="gate">
+            <span class="gate-label">Exit gate — freeze conditions</span>
+            <ul>
+              <li>Every dataset variant is versioned and content-hashed; the hash is recorded and every downstream experiment logs it.</li>
+              <li>NEWS2/MEWS agreement computed and recorded.</li>
+              <li>A cross-patient retrieval probe returns nothing — the privacy boundary fails closed, verified by test, not by inspection.</li>
+              <li>The raw database file is confirmed unreadable outside the encrypted volume.</li>
+              <li><b>No phase past this point may begin until the hash exists.</b></li>
+            </ul>
+          </div>
+          <p class="depends">depends on: P1</p>
+        </div>
+      </article>
+
+      <!-- P3B -->
+      <article class="phase" data-track="research">
+        <div class="phase-stripe"></div>
+        <div class="phase-body">
+          <div class="phase-head">
+            <span class="phase-id">P3B</span>
+            <h3>Federated + DP training harness</h3>
+            <span class="chip owner-research">Person B</span>
+            <span class="chip critpath">critical path</span>
+          </div>
+          <p class="phase-objective">Build the machinery the campaign will run unattended. Build it in the order below — each layer is only debuggable once the one beneath it is known good.</p>
+          <ul class="task-list">
+            <li>Centralized single-node baseline first, to establish the no-FL, no-DP performance ceiling.</li>
+            <li>Flower FedAvg across five ward clients, still without DP — confirm convergence.</li>
+            <li>Opacus DP-SGD per client, with the Rényi accountant persisted across rounds; verify the achieved ε lands within tolerance of the target.</li>
+            <li>Dockerize ward nodes over gRPC — this is what converts "simulated federation" into genuine process-level federation in the paper.</li>
+            <li>Dropout strategy for the client-unavailability experiment.</li>
+            <li>Experiment runner: config-driven, checkpointed, resumable, writing one complete result row per run (F1, precision, recall, AUC-ROC, <b>false negative rate</b>, achieved ε, wall-clock, dataset hash, seed).</li>
+          </ul>
+          <div class="gate">
+            <span class="gate-label">Exit gate</span>
+            <ul>
+              <li>One full (model × ε × seed) run completes unattended and writes a complete result row.</li>
+              <li>Killing the runner mid-campaign and restarting resumes without duplicating or losing cells.</li>
+              <li>Achieved ε matches target ε within an agreed tolerance.</li>
+            </ul>
+          </div>
+          <p class="depends">depends on: P2 freeze</p>
+        </div>
+      </article>
+
+      <!-- P3A -->
+      <article class="phase" data-track="product">
+        <div class="phase-stripe"></div>
+        <div class="phase-body">
+          <div class="phase-head">
+            <span class="phase-id">P3A</span>
+            <h3>Product track build</h3>
+            <span class="chip owner-product">Person A</span>
+          </div>
+          <p class="phase-objective">The patient-facing assistant and the doctor dashboard shell. Runs fully parallel to P3B — it needs the frozen data but nothing from the research track.</p>
+          <ul class="task-list">
+            <li>RAG layer: embedder, retriever with the <code>where</code> patient filter as the enforced privacy boundary, prompt builder with an explicit refusal instruction when context is insufficient.</li>
+            <li>Ollama client at low temperature; FastAPI endpoints for query, ingest, alerts, and scoring.</li>
+            <li>Streamlit patient chat and doctor dashboard shell (alert list wired to a stub until P5).</li>
+            <li>Lab-report PDF ingestion into the patient's collection.</li>
+            <li>Generate the synthetic encounter notes that populate the RAG knowledge base.</li>
+          </ul>
+          <div class="gate">
+            <span class="gate-label">Exit gate</span>
+            <ul>
+              <li>A patient question returns an answer traceable to that patient's own record.</li>
+              <li>An adversarial probe for another patient's data returns nothing — tested, not assumed.</li>
+              <li>No outbound network call occurs during inference.</li>
+            </ul>
+          </div>
+          <p class="depends">depends on: P2 freeze</p>
+        </div>
+      </article>
+
+      <!-- P4 -->
+      <article class="phase" data-track="research">
+        <div class="phase-stripe"></div>
+        <div class="phase-body">
+          <div class="phase-head">
+            <span class="phase-id">P4</span>
+            <h3>Experimental campaign</h3>
+            <span class="chip owner-research">B leads · A supports</span>
+            <span class="chip critpath">critical path · long pole</span>
+          </div>
+          <p class="phase-objective">Execute the full grid unattended. This phase is mostly waiting, which is exactly why the paper's Methods and Related Work sections should be written during it.</p>
+          <ul class="task-list">
+            <li>Core grid on PhysioNet: ε levels × architectures × seeds. Set the seed count from the revised statistical plan, not from convention.</li>
+            <li>Client-dropout and latency robustness run.</li>
+            <li>Non-IID skew intensity sweep if compute remains.</li>
+            <li><b>Opportunistic result, nearly free:</b> the five wards are already non-IID, so per-ward metric breakdowns at each ε will show whether DP noise degrades some wards more than others. Disparate impact of DP across subgroups is an established effect and reporting it per-ward costs nothing beyond a groupby.</li>
+          </ul>
+          <div class="gate">
+            <span class="gate-label">Exit gate</span>
+            <ul>
+              <li>Every grid cell has a result row — no silently failed or missing cells.</li>
+              <li>Every row carries the frozen dataset hash and its seed.</li>
+              <li>Spot-rerunning one cell reproduces its recorded metrics.</li>
+            </ul>
+          </div>
+          <p class="depends">depends on: P3B</p>
+        </div>
+      </article>
+
+      <!-- P5 -->
+      <article class="phase" data-track="product">
+        <div class="phase-stripe"></div>
+        <div class="phase-body">
+          <div class="phase-head">
+            <span class="phase-id">P5</span>
+            <h3>C3 bridge integration</h3>
+            <span class="chip owner-product">A leads · B supports</span>
+          </div>
+          <p class="phase-objective">Wire an anomaly alert to a patient-scoped RAG summary — the architectural connection that is C3's actual novelty. Start this against the <em>first</em> trained checkpoint from P3B; it must not wait for the campaign to finish.</p>
+          <ul class="task-list">
+            <li>Risk scorer serving the trained model; alert bridge that identifies which vitals are abnormal and builds the alert-specific retrieval query.</li>
+            <li>Alert-summary prompt with explicit no-treatment-recommendation and no-fabrication constraints.</li>
+            <li>Live alerts in the doctor dashboard, ranked by risk, with drill-down and follow-up query.</li>
+            <li>Full end-to-end flow: reading arrives → scored → alert raised → summary generated → clinician reviews → follow-up answered.</li>
+            <li>Run the privacy audit checklist against the assembled system.</li>
+          </ul>
+          <div class="gate">
+            <span class="gate-label">Exit gate</span>
+            <ul>
+              <li>The end-to-end walkthrough runs start to finish without manual intervention.</li>
+              <li>Privacy audit passes: no egress, per-patient isolation holds, storage encrypted, no patient data in logs or session state.</li>
+            </ul>
+          </div>
+          <p class="depends">depends on: P3A + first checkpoint from P3B</p>
+        </div>
+      </article>
+
+      <!-- P6 -->
+      <article class="phase" data-track="product">
+        <div class="phase-stripe"></div>
+        <div class="phase-body">
+          <div class="phase-head">
+            <span class="phase-id">P6</span>
+            <h3>C3 evaluation</h3>
+            <span class="chip owner-both">A + B</span>
+          </div>
+          <p class="phase-objective">Three independent evaluation layers over the same alert summaries. The programmatic layer is the strongest of the three and the cheapest to defend, because ground truth is fully controlled.</p>
+          <ul class="task-list">
+            <li>Generate 20–30 alert scenarios from held-out patients — hold them out at the P2 freeze, not later.</li>
+            <li>Human rubric: two raters scoring independently, then Cohen's κ.</li>
+            <li>LLM-as-judge across multiple judge models on the same rubric.</li>
+            <li>Programmatic fact-verification: extract claims, check each against the source record, report an objective hallucination rate.</li>
+          </ul>
+          <div class="gate">
+            <span class="gate-label">Exit gate</span>
+            <ul>
+              <li>All three layers reported with numbers, including κ and the objective hallucination rate.</li>
+              <li>Disagreements between human, LLM-judge, and programmatic layers are explained rather than averaged away.</li>
+            </ul>
+          </div>
+          <p class="depends">depends on: P5</p>
+        </div>
+      </article>
+
+      <!-- P7 -->
+      <article class="phase" data-track="research">
+        <div class="phase-stripe"></div>
+        <div class="phase-body">
+          <div class="phase-head">
+            <span class="phase-id">P7</span>
+            <h3>Analysis &amp; figures</h3>
+            <span class="chip owner-research">B leads</span>
+            <span class="chip critpath">critical path</span>
+          </div>
+          <p class="phase-objective">Turn result rows into the paper's claims. Every number that appears in the paper originates here and nowhere else.</p>
+          <ul class="task-list">
+            <li>Run the revised statistical plan from P0. Identify ε* — the budget below which utility falls under the pre-declared clinical threshold — and justify that threshold in the paper rather than picking it after seeing results.</li>
+            <li>Interpret false negative rate as the clinically dominant metric; a missed deterioration is not symmetric with a false alarm.</li>
+            <li>Generate all figures from scripts reading the results files — never hand-assembled, so a rerun regenerates the paper.</li>
+            <li>Build the results tables as mean ± std across seeds, with the achieved ε alongside the target.</li>
+          </ul>
+          <div class="gate">
+            <span class="gate-label">Exit gate</span>
+            <ul>
+              <li>Every figure and table regenerates from a single command against the frozen results.</li>
+              <li>No number in the draft exists outside a generated artifact.</li>
+            </ul>
+          </div>
+          <p class="depends">depends on: P4 (+ P6 for the C3 section)</p>
+        </div>
+      </article>
+
+      <!-- P8 -->
+      <article class="phase" data-track="research">
+        <div class="phase-stripe"></div>
+        <div class="phase-body">
+          <div class="phase-head">
+            <span class="phase-id">P8</span>
+            <h3>Paper</h3>
+            <span class="chip owner-research">B leads · A supports</span>
+            <span class="chip critpath">critical path</span>
+          </div>
+          <p class="phase-objective">Deliberately overlapped with P4–P7. Methods, Related Work, and the System Architecture section describe decisions already made and should be written while the campaign runs.</p>
+          <ul class="task-list">
+            <li><b>During P4:</b> Introduction, Related Work with the gap table, System Architecture, Data and Preprocessing, FL+DP Methodology.</li>
+            <li><b>After P7:</b> Results, Discussion, Conclusion.</li>
+            <li>Limitations written to the fixed / mitigated / defended structure — state plainly what remains genuinely limited rather than defending everything.</li>
+            <li>Secure all citations, including the labeling protocols, the DP and FL foundations, and the real-signal dataset.</li>
+            <li>Mentor review, then revision.</li>
+          </ul>
+          <div class="gate">
+            <span class="gate-label">Exit gate</span>
+            <ul>
+              <li>Complete draft reviewed by both authors and the mentor, with feedback incorporated.</li>
+              <li>Every claim in the abstract traces to a specific figure or table.</li>
+            </ul>
+          </div>
+          <p class="depends">depends on: P7 (overlaps P4–P7)</p>
+        </div>
+      </article>
+
+      <!-- P9 -->
+      <article class="phase" data-track="both">
+        <div class="phase-stripe"></div>
+        <div class="phase-body">
+          <div class="phase-head">
+            <span class="phase-id">P9</span>
+            <h3>Hardening &amp; defense</h3>
+            <span class="chip owner-both">A + B</span>
+            <span class="chip critpath">critical path</span>
+          </div>
+          <p class="phase-objective">Make the demo reliable and the work reproducible by someone else.</p>
+          <ul class="task-list">
+            <li>Rehearse the full demo end to end at least twice; record a fallback video against live-demo failure.</li>
+            <li>Public repository with a README that reproduces the pipeline from scratch, plus supplementary tables and configuration.</li>
+            <li>Slides or poster; prepare answers to the predictable challenges — why synthetic data, why this ε range, why these labels, what "federated" means here.</li>
+            <li>Ethics, author-contribution, and conflict-of-interest statements.</li>
+          </ul>
+          <div class="gate">
+            <span class="gate-label">Exit gate</span>
+            <ul>
+              <li>Demo runs twice consecutively without failure.</li>
+              <li>A clean clone of the repository reproduces at least one paper figure unaided.</li>
+            </ul>
+          </div>
+          <p class="depends">depends on: P8</p>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ RECONCILIATION ============ -->
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">P1 deliverable</p>
+      <h2>Document reconciliation</h2>
+      <p>The PRD and Technical Execution Plan predate the two guides and contradict them on six points.</p>
+      <div class="finding is-warn" style="margin-top:.4rem">
+        <p class="finding-tag">Superseded — see the Scope Lock</p>
+        <p>This table records the original reconciliation. Two rows have since changed on evidence and decision: the dataset resolved to <b>neither</b> candidate (Synthea failed its tests; PhysioNet/CinC 2019 replaced it), and <b>voice was restored</b> as a demo-scope feature. A seventh conflict — LLM temperature 0.1 vs 0.2 — was found later and resolved to 0.2. The Scope Lock document is authoritative.</p>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Point</th><th>PRD / Execution Plan</th><th>Prototype / Research Guide</th><th>Decision</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Voice pipeline</td>
+            <td>Core feature — ASR + TTS, "first-class input mode"</td>
+            <td>Cut — "zero research value, high integration risk"</td>
+            <td class="verdict-cell v-keep">In — demo only</td>
+          </tr>
+          <tr>
+            <td>Primary dataset</td>
+            <td>MIMIC-III/IV primary, Synthea as fallback</td>
+            <td>Synthea primary, PTB-XL for real-signal validation</td>
+            <td class="verdict-cell v-keep">PhysioNet 2019</td>
+          </tr>
+          <tr>
+            <td>Vector store</td>
+            <td>pgvector <em>or</em> ChromaDB</td>
+            <td>ChromaDB, file-based, no server</td>
+            <td class="verdict-cell v-keep">ChromaDB</td>
+          </tr>
+          <tr>
+            <td>Meal / exercise logging</td>
+            <td>Patient interface feature</td>
+            <td>Cut — not in Synthea, no research use</td>
+            <td class="verdict-cell v-cut">Cut</td>
+          </tr>
+          <tr>
+            <td>Anomaly labels</td>
+            <td>Single-vital thresholds</td>
+            <td>NEWS2 aggregate + MEWS cross-check</td>
+            <td class="verdict-cell v-keep">NEWS2 + MEWS</td>
+          </tr>
+          <tr>
+            <td>Federation realism</td>
+            <td>In-process simulation</td>
+            <td>Docker ward nodes over gRPC + dropout experiment</td>
+            <td class="verdict-cell v-keep">Dockerized</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ DESCOPE ============ -->
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">Agree this before you need it</p>
+      <h2>De-scoping ladder</h2>
+      <p>A plan without a pre-agreed cut order gets cut under pressure by whoever panics first, and the thing that gets dropped is usually the thing that mattered. Descend this ladder in order; the bottom rung is non-negotiable.</p>
+    </div>
+    <ol class="ladder">
+      <li><span><b>Drop GRU, keep LSTM vs CNN.</b><span class="why">C2's hypothesis is about recurrent vs convolutional. One recurrent architecture tests it. Cuts the core grid by a third.</span></span></li>
+      <li><span><b>Drop PTB-XL validation.</b><span class="why">Its purpose was to prove the finding was not an artefact of synthetic data. The primary dataset is now real, so that objection no longer exists. Reclaims ~5.5 days — spend it on seeds.</span></span></li>
+      <li><span><b>Drop the client-dropout robustness run.</b><span class="why">Nice defensive result; not load-bearing for any contribution. Restate as future work.</span></span></li>
+      <li><span><b>Drop the voice pipeline.</b><span class="why">Restored as a demo feature, but explicitly not a contribution — so it is the first product-track item to go if the schedule tightens.</span></span></li>
+      <li><span><b>Drop lab-report PDF ingestion.</b><span class="why">Demo polish. The RAG pipeline is already demonstrated by the notes corpus.</span></span></li>
+      <li><span><b>Drop the MEWS cross-check, keep NEWS2.</b><span class="why">Weakens the labeling defense from "two validated schemes agree" to "one validated scheme" — a real but survivable loss.</span></span></li>
+      <li class="never"><span><b>Never cut: the seed count, or the C3 bridge.</b><span class="why">Seeds are a validity constraint, not a scope choice — below the count the statistical plan requires, every comparison claim becomes indefensible. The C3 bridge is the only contribution with no analogue in b1–b5; without it the paper is an ε-sweep with a chatbot attached.</span></span></li>
+    </ol>
+  </section>
+
+  <footer>
+    Planning artifact for NLP-06. No implementation performed. Phase content reconciles the Project PRD, Technical Execution Plan, Prototype Guide, and Research Guide; the three findings above and the de-scoping ladder are additions, not restatements.
+  </footer>
+
+</div>
+</body>
+</html>

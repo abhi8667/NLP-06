@@ -1,0 +1,14 @@
+{
+  "flwr_version": "1.33.0",
+  "api": {
+    "ClientApp": true,
+    "ServerApp": true,
+    "run_simulation": true,
+    "start_simulation (legacy)": true,
+    "NumPyClient": true
+  },
+  "has_fedavg": true,
+  "ray_installed": false,
+  "flwr_cli": false,
+  "recommendation": "build P3B on deployment path (SuperLink/SuperNode over gRPC); skip Ray"
+}

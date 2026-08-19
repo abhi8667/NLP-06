@@ -1,0 +1,973 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NLP-06 Field Guide</title>
+<style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body { margin: 0; }
+    img, svg, video { max-width: 100%; height: auto; }
+    table { border-collapse: collapse; }
+</style>
+<style>
+  :root {
+    --ground:        #F7F8FA;
+    --surface:       #FFFFFF;
+    --surface-sunk:  #EFF2F6;
+    --code-bg:       #ECF0F5;
+    --ink:           #121A24;
+    --ink-muted:     #586575;
+    --ink-faint:     #7C8899;
+    --rule:          #DCE3EB;
+    --rule-strong:   #C3CEDA;
+    --accent:        #0E7C86;
+    --accent-soft:   #DCEFF1;
+    --accent-ink:    #085158;
+    --warn:          #A8660A;
+    --warn-soft:     #F7EBD8;
+    --crit:          #A93A38;
+    --crit-soft:     #F8E4E3;
+    --ok:            #2F7048;
+    --ok-soft:       #E0EFE5;
+    --shadow:        0 1px 2px rgba(18, 26, 36, .05), 0 8px 24px -16px rgba(18, 26, 36, .28);
+
+    --font-display: "Sitka Display", "Sitka Text", Sitka, Cambria, Constantia, Georgia, serif;
+    --font-body: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "Cascadia Mono", Consolas, "SF Mono", ui-monospace, "Roboto Mono", Menlo, monospace;
+
+    --measure: 68ch;
+    --page: 1040px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:       #0C1117;
+      --surface:      #131C25;
+      --surface-sunk: #0F1720;
+      --code-bg:      #0A1017;
+      --ink:          #E3EAF1;
+      --ink-muted:    #93A2B3;
+      --ink-faint:    #748699;
+      --rule:         #223040;
+      --rule-strong:  #33455A;
+      --accent:       #45BFC9;
+      --accent-soft:  #10333A;
+      --accent-ink:   #8CDCE3;
+      --warn:         #DFA850;
+      --warn-soft:    #33260F;
+      --crit:         #E8817E;
+      --crit-soft:    #37201F;
+      --ok:           #6FBF8C;
+      --ok-soft:      #16301F;
+      --shadow:       0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:       #0C1117;
+    --surface:      #131C25;
+    --surface-sunk: #0F1720;
+    --code-bg:      #0A1017;
+    --ink:          #E3EAF1;
+    --ink-muted:    #93A2B3;
+    --ink-faint:    #748699;
+    --rule:         #223040;
+    --rule-strong:  #33455A;
+    --accent:       #45BFC9;
+    --accent-soft:  #10333A;
+    --accent-ink:   #8CDCE3;
+    --warn:         #DFA850;
+    --warn-soft:    #33260F;
+    --crit:         #E8817E;
+    --crit-soft:    #37201F;
+    --ok:           #6FBF8C;
+    --ok-soft:      #16301F;
+    --shadow:       0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16.5px;
+    line-height: 1.68;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: var(--page);
+    margin: 0 auto;
+    padding: clamp(2rem, 5vw, 4.5rem) clamp(1.1rem, 4vw, 2.5rem) 6rem;
+    display: flex; flex-direction: column;
+    gap: clamp(2.75rem, 5vw, 4rem);
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    font-weight: 600; text-wrap: balance; margin: 0;
+    line-height: 1.18; letter-spacing: -.006em;
+  }
+  h1 { font-size: clamp(2.1rem, 5vw, 3.05rem); letter-spacing: -.02em; }
+  h2 { font-size: clamp(1.45rem, 2.9vw, 1.9rem); }
+  h3 { font-size: 1.14rem; }
+  h4 { font-family: var(--font-body); font-size: .98rem; font-weight: 650; }
+  p  { margin: 0; max-width: var(--measure); }
+
+  .eyebrow {
+    font-family: var(--font-mono); font-size: .715rem;
+    text-transform: uppercase; letter-spacing: .13em;
+    color: var(--ink-faint); margin: 0;
+  }
+  a { color: var(--accent); text-underline-offset: 2px; }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+
+  code {
+    font-family: var(--font-mono); font-size: .86em;
+    background: var(--surface-sunk); border: 1px solid var(--rule);
+    border-radius: 3px; padding: .06em .34em;
+  }
+
+  header.masthead {
+    display: flex; flex-direction: column; gap: 1.05rem;
+    padding-bottom: 1.9rem; border-bottom: 2px solid var(--ink);
+  }
+  .lede { font-size: clamp(1.02rem, 1.75vw, 1.18rem); color: var(--ink-muted); max-width: 62ch; }
+
+  section { display: flex; flex-direction: column; gap: 1.4rem; }
+  .section-head { display: flex; flex-direction: column; gap: .55rem; }
+  .prose { display: flex; flex-direction: column; gap: 1rem; }
+
+  /* plain-words callout */
+  .plain {
+    background: var(--accent-soft); border: 1px solid var(--accent);
+    border-radius: 5px; padding: 1rem 1.15rem; max-width: none;
+    display: flex; flex-direction: column; gap: .5rem;
+  }
+  .plain .tag {
+    font-family: var(--font-mono); font-size: .64rem; text-transform: uppercase;
+    letter-spacing: .12em; color: var(--accent-ink);
+  }
+  .plain p { color: var(--accent-ink); max-width: 74ch; font-size: 1.02rem; }
+
+  /* diagram */
+  .diagram-wrap {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 5px;
+    padding: 1.3rem 1rem 1rem; overflow-x: auto; box-shadow: var(--shadow);
+  }
+  .diagram-wrap svg { display: block; min-width: 760px; width: 100%; height: auto; }
+  .n-box   { fill: var(--surface-sunk); stroke: var(--rule-strong); stroke-width: 1.2; }
+  .n-acc   { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+  .n-warn  { fill: var(--warn-soft); stroke: var(--warn); stroke-width: 1.5; }
+  .t-lab   { fill: var(--ink); font-family: var(--font-body); font-size: 12.5px; font-weight: 600; }
+  .t-sub   { fill: var(--ink-muted); font-family: var(--font-body); font-size: 10.5px; }
+  .t-axis  { fill: var(--ink-faint); font-family: var(--font-mono); font-size: 10px; letter-spacing: .09em; }
+  .ln      { stroke: var(--rule-strong); stroke-width: 1.5; fill: none; }
+  .ln-acc  { stroke: var(--accent); stroke-width: 2.2; fill: none; }
+
+  /* glossary */
+  .glossary { display: grid; gap: .85rem; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); }
+  .term {
+    background: var(--surface); border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent); border-radius: 4px;
+    padding: .95rem 1.1rem; display: flex; flex-direction: column; gap: .45rem;
+    box-shadow: var(--shadow);
+  }
+  .term h4 { color: var(--ink); }
+  .term .what { font-size: .93rem; color: var(--ink-muted); max-width: none; }
+  .term .why {
+    font-size: .89rem; color: var(--ink); max-width: none;
+    border-top: 1px dashed var(--rule-strong); padding-top: .45rem;
+  }
+  .term .why b { color: var(--accent-ink); font-weight: 650; }
+  .group-label {
+    font-family: var(--font-mono); font-size: .68rem; text-transform: uppercase;
+    letter-spacing: .12em; color: var(--ink-faint);
+    padding-top: .6rem; border-top: 1px solid var(--rule);
+  }
+
+  /* phases */
+  .phases { display: flex; flex-direction: column; gap: .7rem; }
+  .ph {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 5px;
+    padding: 1rem 1.15rem; display: grid; grid-template-columns: 3.2rem 1fr auto;
+    gap: .5rem .95rem; align-items: start; box-shadow: var(--shadow);
+  }
+  .ph-id {
+    font-family: var(--font-mono); font-size: .82rem; font-weight: 700;
+    color: var(--accent); padding-top: .12rem;
+  }
+  .ph-main { display: flex; flex-direction: column; gap: .35rem; min-width: 0; }
+  .ph-main h4 { font-size: 1.02rem; }
+  .ph-main p { font-size: .93rem; color: var(--ink-muted); max-width: 72ch; }
+  .status {
+    font-family: var(--font-mono); font-size: .63rem; text-transform: uppercase;
+    letter-spacing: .09em; padding: .22rem .55rem; border-radius: 3px;
+    white-space: nowrap; border: 1px solid var(--rule-strong);
+    color: var(--ink-faint); background: var(--surface-sunk);
+  }
+  .status.done    { color: var(--ok); background: var(--ok-soft); border-color: var(--ok); }
+  .status.now     { color: var(--warn); background: var(--warn-soft); border-color: var(--warn); }
+  .status.blocked { color: var(--crit); background: var(--crit-soft); border-color: var(--crit); }
+  @media (max-width: 620px) {
+    .ph { grid-template-columns: 2.6rem 1fr; }
+    .ph .status { grid-column: 2; justify-self: start; }
+  }
+
+  /* findings */
+  .find {
+    background: var(--surface); border: 1px solid var(--rule);
+    border-left: 3px solid var(--ok); border-radius: 4px;
+    padding: .95rem 1.15rem; display: flex; flex-direction: column; gap: .4rem;
+    box-shadow: var(--shadow);
+  }
+  .find.bad { border-left-color: var(--crit); }
+  .find h4 { font-size: .99rem; }
+  .find p { font-size: .93rem; color: var(--ink-muted); max-width: 78ch; }
+  .find .num {
+    font-family: var(--font-mono); font-weight: 700; color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* three-part probe cards: why we asked / what we found / what changes */
+  .probes { display: flex; flex-direction: column; gap: 1.05rem; }
+  .probe {
+    background: var(--surface); border: 1px solid var(--rule);
+    border-radius: 6px; box-shadow: var(--shadow); overflow: hidden;
+  }
+  .probe-head {
+    padding: .85rem 1.15rem; border-bottom: 1px solid var(--rule);
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem .8rem;
+    background: var(--surface-sunk);
+  }
+  .probe-head h4 { flex: 1 1 22ch; font-size: 1.02rem; }
+  .probe-tag {
+    font-family: var(--font-mono); font-size: .63rem; text-transform: uppercase;
+    letter-spacing: .1em; padding: .2rem .5rem; border-radius: 3px; white-space: nowrap;
+    border: 1px solid var(--ok); color: var(--ok); background: var(--ok-soft);
+  }
+  .probe-tag.bad { border-color: var(--crit); color: var(--crit); background: var(--crit-soft); }
+  .probe-tag.warn { border-color: var(--warn); color: var(--warn); background: var(--warn-soft); }
+  .probe-body { padding: .3rem 1.15rem 1rem; display: flex; flex-direction: column; }
+  .probe-row {
+    display: grid; grid-template-columns: 8.5rem 1fr; gap: .9rem;
+    padding: .7rem 0; border-bottom: 1px dashed var(--rule);
+  }
+  .probe-row:last-child { border-bottom: none; }
+  .probe-row .k {
+    font-family: var(--font-mono); font-size: .64rem; text-transform: uppercase;
+    letter-spacing: .1em; color: var(--ink-faint); padding-top: .28rem;
+  }
+  .probe-row .v { font-size: .94rem; max-width: 76ch; }
+  .probe-row.changes .v { color: var(--ink); }
+  .probe-row.changes .k { color: var(--accent); }
+  .probe-row .v .num {
+    font-family: var(--font-mono); font-weight: 700; font-variant-numeric: tabular-nums;
+  }
+  @media (max-width: 620px) {
+    .probe-row { grid-template-columns: 1fr; gap: .2rem; }
+  }
+
+  .table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 5px; background: var(--surface); box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; min-width: 480px; font-size: .9rem; }
+  thead th {
+    text-align: left; font-family: var(--font-mono); font-size: .67rem;
+    text-transform: uppercase; letter-spacing: .1em; color: var(--ink-faint);
+    font-weight: 600; padding: .68rem .9rem; border-bottom: 1px solid var(--rule-strong);
+    background: var(--surface-sunk); white-space: nowrap;
+  }
+  tbody td { padding: .66rem .9rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .next {
+    background: var(--surface); border: 1px solid var(--rule-strong);
+    border-radius: 5px; padding: 1.2rem 1.35rem; box-shadow: var(--shadow);
+    display: flex; flex-direction: column; gap: .75rem;
+  }
+  .next ol { margin: 0; padding-left: 1.3rem; display: flex; flex-direction: column; gap: .55rem; }
+  .next li { font-size: .96rem; }
+  .next li::marker { color: var(--accent); font-family: var(--font-mono); font-weight: 700; }
+
+  footer {
+    border-top: 1px solid var(--rule); padding-top: 1.3rem;
+    font-size: .86rem; color: var(--ink-faint); max-width: var(--measure);
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<nav style="max-width:1060px;margin:0 auto;padding:1rem clamp(1.1rem,4vw,2.5rem) 0;font-family:var(--font-mono);font-size:.72rem;letter-spacing:.06em;">
+  <a href="index.html" style="color:var(--accent);text-decoration:none;">&larr; ALL DOCUMENTS</a>
+</nav>
+<div class="page">
+
+  <header class="masthead">
+    <p class="eyebrow">NLP-06 · orientation guide · assumes no prior knowledge</p>
+    <h1>NLP-06 Field Guide</h1>
+    <p class="lede">What this project is, what every piece of jargon means and why it is there, what has actually been built so far, and what happens next. Read top to bottom once; after that, use it as a lookup.</p>
+  </header>
+
+  <!-- ================= 1. WHAT ================= -->
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">1 · Start here</p>
+      <h2>What are we building?</h2>
+    </div>
+
+    <div class="plain">
+      <span class="tag">In one paragraph</span>
+      <p>A hospital system that watches patients' vital signs and warns nurses early when someone is getting worse — and that answers questions about a patient in plain English. The catch, and the entire point of the project, is that it does all of this <em>without patient data ever leaving the hospital</em>. Alongside the working system, we are writing a research paper that measures one specific thing: how much privacy protection you can add before the warning system stops being reliable enough to trust.</p>
+    </div>
+
+    <div class="prose">
+      <h3>Why privacy is the whole problem</h3>
+      <p>If you wanted to build this the easy way, you would send patient vitals to a cloud AI service and get answers back. That is how most AI products work. In healthcare it is close to unusable: patient records are legally and ethically bound to stay under the hospital's control, and once data leaves the building you have lost control of it.</p>
+      <p>So the design constraint is inverted. Instead of sending the data to the AI, we bring the AI to the data. Everything runs on hardware the hospital owns. Nothing is sent anywhere.</p>
+      <p>That creates a second, subtler problem. We would still like the warning system to learn from <em>many</em> patients across <em>many</em> wards, because a model that has only seen one ward's patients is not very good. Learning from everyone, while nobody shares data — that tension is what most of the technical machinery in this project exists to resolve.</p>
+    </div>
+  </section>
+
+  <!-- ================= 2. TWO HALVES ================= -->
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">2 · The shape of it</p>
+      <h2>The system has two halves that meet at one point</h2>
+      <p>People get lost here, so it is worth being precise: there are <strong>two separate AI systems</strong> doing two different jobs. They are not the same model, and they are not trained together.</p>
+    </div>
+
+    <div class="glossary">
+      <div class="term">
+        <h4>Half one — the assistant (the "product track")</h4>
+        <p class="what">A chatbot. A patient or nurse asks a question in plain English; it answers using only that specific patient's records. Built from a language model running locally plus a retrieval step that fetches the right records first.</p>
+        <p class="why"><b>Job:</b> make a patient's own records understandable and answerable.</p>
+      </div>
+      <div class="term">
+        <h4>Half two — the detector (the "research track")</h4>
+        <p class="what">A small, ordinary machine-learning model. It reads a stream of numbers — heart rate, blood pressure, oxygen, and so on — and outputs a risk score meaning roughly "this person looks like they are deteriorating."</p>
+        <p class="why"><b>Job:</b> notice trouble early, and be the thing the research paper measures.</p>
+      </div>
+    </div>
+
+    <div class="prose">
+      <p>They meet at exactly one place, and that junction is the most original idea in the project: <strong>when the detector raises an alert, it automatically asks the assistant to explain the patient.</strong> The nurse does not just get a red number — they get a short written summary of what is abnormal and what in the patient's history might explain it. Nobody in the papers we are building on has connected these two things this way.</p>
+    </div>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 880 380" role="img" aria-labelledby="flow-t flow-d">
+        <title id="flow-t">How the system works end to end</title>
+        <desc id="flow-d">Vitals flow into a detector which produces a risk score. High scores trigger a retrieval and language model summary shown to the clinician. Separately, wards train the detector locally and share only privatised updates.</desc>
+
+        <text class="t-axis" x="6" y="16">HALF TWO - THE DETECTOR (runs constantly)</text>
+        <rect class="n-box" x="6" y="28" width="126" height="50" rx="4"/>
+        <text class="t-lab" x="18" y="48">Patient vitals</text>
+        <text class="t-sub" x="18" y="64">heart rate, BP, O2...</text>
+
+        <path class="ln" d="M132 53 H176"/>
+        <rect class="n-box" x="176" y="28" width="140" height="50" rx="4"/>
+        <text class="t-lab" x="188" y="48">Sliding window</text>
+        <text class="t-sub" x="188" y="64">last 12 readings</text>
+
+        <path class="ln" d="M316 53 H360"/>
+        <rect class="n-acc" x="360" y="28" width="140" height="50" rx="4"/>
+        <text class="t-lab" x="372" y="48">Detector model</text>
+        <text class="t-sub" x="372" y="64">LSTM / GRU / CNN</text>
+
+        <path class="ln" d="M500 53 H544"/>
+        <rect class="n-warn" x="544" y="28" width="132" height="50" rx="4"/>
+        <text class="t-lab" x="556" y="48">Risk score</text>
+        <text class="t-sub" x="556" y="64">high? raise alert</text>
+
+        <!-- bridge down -->
+        <path class="ln-acc" d="M610 78 V128"/>
+        <text class="t-sub" x="618" y="105">alert triggers explanation</text>
+
+        <text class="t-axis" x="6" y="150">HALF ONE - THE ASSISTANT</text>
+        <rect class="n-box" x="176" y="162" width="140" height="50" rx="4"/>
+        <text class="t-lab" x="188" y="182">Patient records</text>
+        <text class="t-sub" x="188" y="198">notes, labs, history</text>
+
+        <path class="ln" d="M316 187 H360"/>
+        <rect class="n-box" x="360" y="162" width="140" height="50" rx="4"/>
+        <text class="t-lab" x="372" y="182">Retrieval (RAG)</text>
+        <text class="t-sub" x="372" y="198">fetch THIS patient</text>
+
+        <path class="ln-acc" d="M500 187 H544"/>
+        <rect class="n-acc" x="544" y="162" width="132" height="50" rx="4"/>
+        <text class="t-lab" x="556" y="182">Local LLM</text>
+        <text class="t-sub" x="556" y="198">writes the summary</text>
+
+        <path class="ln-acc" d="M676 187 H720"/>
+        <rect class="n-acc" x="720" y="162" width="152" height="50" rx="4"/>
+        <text class="t-lab" x="732" y="182">Nurse sees</text>
+        <text class="t-sub" x="732" y="198">alert + explanation</text>
+
+        <!-- federated loop -->
+        <text class="t-axis" x="6" y="252">HOW THE DETECTOR LEARNS (federated + private)</text>
+        <rect class="n-box" x="6" y="264" width="118" height="48" rx="4"/>
+        <text class="t-lab" x="18" y="283">Ward A</text>
+        <text class="t-sub" x="18" y="299">trains locally</text>
+        <rect class="n-box" x="140" y="264" width="118" height="48" rx="4"/>
+        <text class="t-lab" x="152" y="283">Ward B</text>
+        <text class="t-sub" x="152" y="299">trains locally</text>
+        <rect class="n-box" x="274" y="264" width="118" height="48" rx="4"/>
+        <text class="t-lab" x="286" y="283">Ward C</text>
+        <text class="t-sub" x="286" y="299">trains locally</text>
+
+        <path class="ln" d="M65 312 V336 H460"/>
+        <path class="ln" d="M199 312 V336"/>
+        <path class="ln" d="M333 312 V336"/>
+        <rect class="n-warn" x="460" y="312" width="164" height="48" rx="4"/>
+        <text class="t-lab" x="472" y="331">Add noise (DP)</text>
+        <text class="t-sub" x="472" y="347">then send updates only</text>
+
+        <path class="ln" d="M624 336 H668"/>
+        <rect class="n-acc" x="668" y="312" width="164" height="48" rx="4"/>
+        <text class="t-lab" x="680" y="331">Average them</text>
+        <text class="t-sub" x="680" y="347">improved shared model</text>
+        <path class="ln" d="M750 312 V296 H392" stroke-dasharray="4 4"/>
+        <text class="t-sub" x="400" y="292">sent back to every ward</text>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ================= 3. GLOSSARY ================= -->
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">3 · Vocabulary</p>
+      <h2>Every word you will keep hearing</h2>
+      <p>Each card says what the thing <em>is</em>, then why it is in <em>this</em> project. If a meeting confuses you, the answer is almost certainly on this page.</p>
+    </div>
+
+    <p class="group-label">The AI basics</p>
+    <div class="glossary">
+      <div class="term">
+        <h4>LLM (Large Language Model)</h4>
+        <p class="what">A model trained on enormous amounts of text that predicts what words come next. That simple ability, at scale, is what lets it answer questions and write summaries. ChatGPT and Claude are LLMs.</p>
+        <p class="why"><b>Why here:</b> it writes the plain-English explanations for nurses and answers patients' questions.</p>
+      </div>
+      <div class="term">
+        <h4>Local / on-premise</h4>
+        <p class="what">The model runs on a computer you physically control, rather than on a company's servers. Works with the internet unplugged.</p>
+        <p class="why"><b>Why here:</b> this is the entire premise. Patient data cannot leave the hospital, so the model has to come to the data.</p>
+      </div>
+      <div class="term">
+        <h4>RAG (Retrieval-Augmented Generation)</h4>
+        <p class="what">Before asking the model a question, you first look up relevant documents and paste them into the question. Effectively an open-book exam instead of a memory test.</p>
+        <p class="why"><b>Why here:</b> the LLM has never met your patient. RAG hands it that patient's actual records, so answers are grounded in fact rather than invented.</p>
+      </div>
+      <div class="term">
+        <h4>Hallucination</h4>
+        <p class="what">When a language model states something false with complete confidence.</p>
+        <p class="why"><b>Why here:</b> in a hospital this is dangerous, and it is the main reason we use RAG and keep the model's creativity setting very low.</p>
+      </div>
+      <div class="term">
+        <h4>Embedding &amp; vector database</h4>
+        <p class="what">An embedding turns a piece of text into a list of numbers positioned so that similar meanings land near each other. A vector database stores these and finds nearest matches — a filing cabinet organised by meaning rather than alphabetically.</p>
+        <p class="why"><b>Why here:</b> it is how RAG finds the right few paragraphs of a patient's record out of hundreds.</p>
+      </div>
+      <div class="term">
+        <h4>Quantization</h4>
+        <p class="what">Compressing a model by storing its numbers less precisely. Roughly what MP3 does to audio: much smaller, slightly lossy, usually indistinguishable in practice.</p>
+        <p class="why"><b>Why here:</b> it is what makes an 8-billion-parameter model fit on a 6 GB laptop GPU at all.</p>
+      </div>
+    </div>
+
+    <p class="group-label">The privacy machinery — the heart of the project</p>
+    <div class="glossary">
+      <div class="term">
+        <h4>Federated Learning (FL)</h4>
+        <p class="what">Instead of collecting everyone's data in one place to train a model, you send the model out to each data holder, each trains on their own data, and only the <em>learned adjustments</em> come back to be averaged together. Like five students studying separately and pooling their notes, never their textbooks.</p>
+        <p class="why"><b>Why here:</b> it lets the detector learn from many wards' patients without any ward's raw data ever moving.</p>
+      </div>
+      <div class="term">
+        <h4>FedAvg</h4>
+        <p class="what">The standard recipe for the "average them together" step, weighted by how much data each participant had.</p>
+        <p class="why"><b>Why here:</b> it is the specific algorithm our federated setup uses. Nothing exotic — the default choice.</p>
+      </div>
+      <div class="term">
+        <h4>Gradient / model update</h4>
+        <p class="what">A model learns by nudging thousands of internal numbers ("weights") up or down to reduce its errors. The gradient is the set of instructions for which way to nudge each one.</p>
+        <p class="why"><b>Why here:</b> gradients are what wards send instead of data — which turns out not to be as safe as it sounds, hence the next card.</p>
+      </div>
+      <div class="term">
+        <h4>Differential Privacy (DP)</h4>
+        <p class="what">Adding carefully calibrated random noise so that no single individual's contribution can be identified in the output. Like blurring a photograph: enough blur and you cannot recognise a face, but you can still see it is a street scene.</p>
+        <p class="why"><b>Why here:</b> federated learning alone leaks. Researchers have shown you can partly reconstruct individuals' data from gradients. DP is a mathematical guarantee against that, not just a hope.</p>
+      </div>
+      <div class="term">
+        <h4>Epsilon (ε) — the privacy budget</h4>
+        <p class="what">The dial controlling how much noise gets added. <strong>Low ε</strong> = lots of noise = strong privacy but a less accurate model. <strong>High ε</strong> = little noise = weaker privacy but better accuracy.</p>
+        <p class="why"><b>Why here:</b> ε is the independent variable of the whole paper. We sweep it and measure where accuracy collapses.</p>
+      </div>
+      <div class="term">
+        <h4>DP-SGD</h4>
+        <p class="what">The specific procedure for training with differential privacy: cap how much any single example can influence the update ("clipping"), then add noise.</p>
+        <p class="why"><b>Why here:</b> it is how we actually apply DP during training, via a library called Opacus.</p>
+      </div>
+      <div class="term">
+        <h4>Privacy accountant (Rényi DP)</h4>
+        <p class="what">Training touches the data thousands of times, and each touch leaks a little. The accountant is the bookkeeping that tracks total privacy spent. Rényi accounting is a tighter method than naive addition, so you get more useful training for the same budget.</p>
+        <p class="why"><b>Why here:</b> without it we cannot honestly state a final ε. We already found and fixed a bug where this bookkeeping silently reset.</p>
+      </div>
+    </div>
+
+    <p class="group-label">The models and the numbers</p>
+    <div class="glossary">
+      <div class="term">
+        <h4>LSTM &amp; GRU</h4>
+        <p class="what">Neural networks with memory. They read a sequence in order and carry context forward, so they can notice trends rather than just snapshots.</p>
+        <p class="why"><b>Why here:</b> deterioration is a <em>trend</em> — a heart rate climbing over hours matters more than any single reading.</p>
+      </div>
+      <div class="term">
+        <h4>CNN</h4>
+        <p class="what">A pattern-spotter. It scans for local shapes rather than tracking order over time.</p>
+        <p class="why"><b>Why here:</b> it is the comparison baseline. Our second research contribution asks whether memory-based models cope with DP noise better than CNNs do.</p>
+      </div>
+      <div class="term">
+        <h4>Sliding window</h4>
+        <p class="what">Instead of feeding one reading at a time, you feed the last 12 consecutive readings as one snapshot, then slide forward by one and repeat.</p>
+        <p class="why"><b>Why here:</b> it is the input format for the detector — and it is exactly what our Synthea data failed to provide.</p>
+      </div>
+      <div class="term">
+        <h4>Prediction horizon</h4>
+        <p class="what">How far into the future the model is asked to see. A horizon of six hours means: given the last twelve hours, will this patient be deteriorating six hours from now?</p>
+        <p class="why"><b>Why here:</b> we measured that asking about the very next hour is nearly trivial — the answer is almost visible in the input already. Six hours ahead is a real forecast, matches the clinical purpose of <em>early</em> warning, and leaves room for the privacy experiment to show something.</p>
+      </div>
+      <div class="term">
+        <h4>Patient-level split</h4>
+        <p class="what">When dividing data into training and testing sets, keeping all of one patient's records on one side. The alternative — splitting individual windows at random — scatters one patient across both.</p>
+        <p class="why"><b>Why here:</b> the deployed system meets patients it has never seen. Testing on unseen <em>hours</em> of familiar patients would answer an easier question than the one that matters.</p>
+      </div>
+      <div class="term">
+        <h4>Non-IID</h4>
+        <p class="what">Jargon for "the participants' data is not all alike." An ICU and a maternity ward see very different patients.</p>
+        <p class="why"><b>Why here:</b> realistic and harder. Federated learning struggles when participants differ, so testing it honestly means building that difference in deliberately.</p>
+      </div>
+      <div class="term">
+        <h4>Precision, recall, F1, AUC</h4>
+        <p class="what">Ways of scoring a detector. <strong>Recall</strong>: of the patients who really were deteriorating, how many did we catch? <strong>Precision</strong>: of the alarms we raised, how many were real? <strong>F1</strong> balances the two. <strong>AUC</strong> summarises performance across all alert thresholds.</p>
+        <p class="why"><b>Why here:</b> these are the outcome measures of the paper.</p>
+      </div>
+      <div class="term">
+        <h4>False negative rate (FNR)</h4>
+        <p class="what">How often the system misses a patient who really is deteriorating.</p>
+        <p class="why"><b>Why here:</b> in a hospital the two error types are not equal. A false alarm is an annoyance; a miss can kill someone. FNR is the number that matters most, and we report it separately.</p>
+      </div>
+      <div class="term">
+        <h4>Seeds</h4>
+        <p class="what">Machine learning involves randomness, so the same experiment run twice gives slightly different results. A seed fixes the randomness; running several seeds shows how much the result wobbles.</p>
+        <p class="why"><b>Why here:</b> a paper reporting a single run is not trustworthy. We report an average across several seeds.</p>
+      </div>
+    </div>
+
+    <p class="group-label">The data</p>
+    <div class="glossary">
+      <div class="term">
+        <h4>NEWS2</h4>
+        <p class="what">A scoring chart used across NHS hospitals. Each vital sign contributes points; the total tells staff how worried to be.</p>
+        <p class="why"><b>Why here:</b> it defines what counts as "deteriorating" in our data. Borrowing a clinically validated protocol is far more defensible than inventing our own thresholds.</p>
+      </div>
+      <div class="term">
+        <h4>Synthea</h4>
+        <p class="what">A free generator of realistic-but-completely-fake patient records, produced by simulating people through real clinical care pathways.</p>
+        <p class="why"><b>Why here:</b> it was our starting dataset because it needs no approvals. <strong>It has now failed our tests</strong> — see the findings section.</p>
+      </div>
+      <div class="term">
+        <h4>MIMIC-III / MIMIC-IV</h4>
+        <p class="what">Real, de-identified intensive-care records from actual hospitals. Free, but you must complete an ethics course and be approved, which takes days to weeks.</p>
+        <p class="why"><b>Why here:</b> it is the leading candidate to replace Synthea, because it contains genuine minute-by-minute monitoring.</p>
+      </div>
+      <div class="term">
+        <h4>PTB-XL</h4>
+        <p class="what">A large free collection of real ECG heart recordings, with no approval required.</p>
+        <p class="why"><b>Why it <em>was</em> here:</b> to prove our findings were not an artefact of simulated data. <b>Now optional</b> — the main dataset is real, so there is no longer a synthetic-data objection to answer. Dropping it frees ~5.5 days of computing for extra repeat runs, which the statistics actually need.</p>
+      </div>
+    </div>
+
+    <p class="group-label">The tools</p>
+    <div class="glossary">
+      <div class="term">
+        <h4>Ollama</h4>
+        <p class="what">Software that downloads and runs LLMs on your own machine, with no account or internet needed after setup.</p>
+        <p class="why"><b>Why here:</b> it is how the local language model actually runs.</p>
+      </div>
+      <div class="term">
+        <h4>ChromaDB</h4>
+        <p class="what">A vector database that stores embeddings in ordinary files, no server required.</p>
+        <p class="why"><b>Why here:</b> it holds each patient's records for RAG, with a hard filter so one patient's search can never reach another's data.</p>
+      </div>
+      <div class="term">
+        <h4>PyTorch</h4>
+        <p class="what">The standard Python library for building and training neural networks.</p>
+        <p class="why"><b>Why here:</b> the detector models are written in it.</p>
+      </div>
+      <div class="term">
+        <h4>Flower (flwr)</h4>
+        <p class="what">A framework that handles the plumbing of federated learning — sending models out, collecting updates, averaging.</p>
+        <p class="why"><b>Why here:</b> so we do not write that plumbing ourselves.</p>
+      </div>
+      <div class="term">
+        <h4>Opacus</h4>
+        <p class="what">A PyTorch library implementing DP-SGD and the privacy accountant.</p>
+        <p class="why"><b>Why here:</b> it applies the noise and tells us the resulting ε. Most of our verified findings so far concern its exact behaviour.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 4. PHASES ================= -->
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">4 · The plan</p>
+      <h2>Ten phases, and where you are in them</h2>
+      <p>Ordered by dependency, not calendar. A phase ends when its check passes, not when the work feels finished. <strong>Person A</strong> builds the assistant; <strong>Person B</strong> builds the detector and leads the paper.</p>
+    </div>
+
+    <div class="phases">
+      <div class="ph">
+        <span class="ph-id">P0</span>
+        <div class="ph-main">
+          <h4>Feasibility spikes</h4>
+          <p>Test the risky assumptions before building on them. Eight questions — data timing, privacy library compatibility, ECG mapping, compute budget, language model choice — all now answered. Only the decisions remain.</p>
+        </div>
+        <span class="status now">you are here</span>
+      </div>
+      <div class="ph">
+        <span class="ph-id">P1</span>
+        <div class="ph-main">
+          <h4>Scope lock</h4>
+          <p>Your four planning documents currently contradict each other. Settle every disagreement, write one authoritative version, set up the shared code repository.</p>
+        </div>
+        <span class="status">next</span>
+      </div>
+      <div class="ph">
+        <span class="ph-id">P2</span>
+        <div class="ph-main">
+          <h4>Data pipeline, then freeze</h4>
+          <p>Build every dataset the project will use, label it, split it into simulated wards, encrypt it — then <em>freeze</em> it. After this point, changing the data invalidates every experiment already run, so it is locked and fingerprinted.</p>
+        </div>
+        <span class="status">not started</span>
+      </div>
+      <div class="ph">
+        <span class="ph-id">P3</span>
+        <div class="ph-main">
+          <h4>Build both halves in parallel</h4>
+          <p>Person A builds the chat assistant, retrieval, and interfaces. Person B builds the federated training machinery. Neither depends on the other, so they run at the same time.</p>
+        </div>
+        <span class="status">not started</span>
+      </div>
+      <div class="ph">
+        <span class="ph-id">P4</span>
+        <div class="ph-main">
+          <h4>The experiment campaign</h4>
+          <p>Run the detector at every privacy level, for every model type, several times each. This is the longest phase and mostly runs unattended — which is exactly when the paper's early sections should be written.</p>
+        </div>
+        <span class="status">not started</span>
+      </div>
+      <div class="ph">
+        <span class="ph-id">P5</span>
+        <div class="ph-main">
+          <h4>Connect the two halves</h4>
+          <p>Wire alerts to automatically trigger a written explanation. This is the original contribution, and it can start as soon as any trained model exists — it must not wait for P4 to finish.</p>
+        </div>
+        <span class="status">not started</span>
+      </div>
+      <div class="ph">
+        <span class="ph-id">P6</span>
+        <div class="ph-main">
+          <h4>Check the explanations are trustworthy</h4>
+          <p>Score the generated summaries three ways: humans rating them, other AI models rating them, and an automatic checker verifying every stated fact appears in the real record.</p>
+        </div>
+        <span class="status">not started</span>
+      </div>
+      <div class="ph">
+        <span class="ph-id">P7</span>
+        <div class="ph-main">
+          <h4>Analysis and figures</h4>
+          <p>Turn results into the paper's charts and statistics. Everything is generated by scripts, so nothing in the paper is hand-typed.</p>
+        </div>
+        <span class="status">not started</span>
+      </div>
+      <div class="ph">
+        <span class="ph-id">P8</span>
+        <div class="ph-main">
+          <h4>Write the paper</h4>
+          <p>Overlaps P4–P7. Background sections get written while experiments run; results sections wait for the numbers.</p>
+        </div>
+        <span class="status">not started</span>
+      </div>
+      <div class="ph">
+        <span class="ph-id">P9</span>
+        <div class="ph-main">
+          <h4>Polish and defend</h4>
+          <p>Rehearse the demo, publish the code, prepare for the predictable hard questions.</p>
+        </div>
+        <span class="status">not started</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 5. DONE SO FAR ================= -->
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">5 · Reality check</p>
+      <h2>What we tested, why, and what it changed</h2>
+    </div>
+
+    <div class="prose">
+      <h3>Why we ran tests before building anything</h3>
+      <p>The plan rested on assumptions nobody had checked: that the data had the right shape, that the privacy libraries would work with our chosen models, that the experiment would fit on a laptop. Any one of those being wrong would force a rebuild — and the later you discover it, the more finished work you throw away.</p>
+      <p>So the first phase deliberately builds nothing. It just asks the eight riskiest questions and answers them cheaply. Each card below is one of those questions: <strong>why we asked it</strong>, <strong>what we found</strong>, and <strong>what changes as a result</strong>. Everything ran on your laptop; the raw numbers are in <code>NLP_06/p0/results/</code>.</p>
+      <p><em>Also set up along the way:</em> a Python environment with GPU-enabled PyTorch, Opacus, Flower and the rest; nine test scripts; Java and Synthea generating data; Ollama running two local language models.</p>
+    </div>
+
+    <div class="probes">
+
+      <div class="probe">
+        <div class="probe-head">
+          <h4>Can our models work with the privacy library at all?</h4>
+          <span class="probe-tag bad">broken, fixed</span>
+        </div>
+        <div class="probe-body">
+          <div class="probe-row"><span class="k">Why we asked</span><span class="v">Training with privacy requires tracking each individual patient's influence separately. Not every type of neural network layer supports that, and if ours did not, the entire research track was built on sand.</span></div>
+          <div class="probe-row"><span class="k">What we found</span><span class="v">The standard <code>LSTM</code> and <code>GRU</code> layers are <strong>rejected outright</strong>. The library refuses them and points to special replacements. The model definitions in your research guide would have crashed the first time privacy was switched on.</span></div>
+          <div class="probe-row changes"><span class="k">What changes</span><span class="v">Use <code>DPLSTM</code> and <code>DPGRU</code> instead of the standard layers. The model code in the research guide must be rewritten before P3B, not during it.</span></div>
+        </div>
+      </div>
+
+      <div class="probe">
+        <div class="probe-head">
+          <h4>Is the model definition itself correct?</h4>
+          <span class="probe-tag bad">broken, fixed</span>
+        </div>
+        <div class="probe-body">
+          <div class="probe-row"><span class="k">Why we asked</span><span class="v">Cheap to check, and silent mistakes here do not raise errors — they just make training quietly fail to work, which is the most expensive kind of bug to chase.</span></div>
+          <div class="probe-row"><span class="k">What we found</span><span class="v">The models apply a squashing function that the chosen error measure <em>also</em> applies internally. Doing it twice shrinks the learning signal by <span class="num">4.2×</span>. Training would have looked mysteriously flat with nothing pointing at the cause.</span></div>
+          <div class="probe-row changes"><span class="k">What changes</span><span class="v">The models must output raw scores, not squashed ones. One line per model, but it would have cost days to find later.</span></div>
+        </div>
+      </div>
+
+      <div class="probe">
+        <div class="probe-head">
+          <h4>Does our privacy number mean what the paper will claim?</h4>
+          <span class="probe-tag bad">broken, fixed</span>
+        </div>
+        <div class="probe-body">
+          <div class="probe-row"><span class="k">Why we asked</span><span class="v">One of the paper's four contributions is a provable privacy guarantee across 100 training rounds. That claim is only true if the privacy bookkeeping accumulates across all of them.</span></div>
+          <div class="probe-row"><span class="k">What we found</span><span class="v">The natural way to write the code restarts the bookkeeping every round. Over six rounds it reported a flat <span class="num">0.75</span> while correct accounting reached <span class="num">1.83</span> — <strong>under-reporting privacy loss by <span class="num">2.43×</span></strong>, and the gap widens with more rounds. Crucially it fails in the flattering direction, so it looks fine.</span></div>
+          <div class="probe-row changes"><span class="k">What changes</span><span class="v">Set the noise level once for the whole run rather than per round, carry each ward's privacy ledger forward between rounds, and report the worst ward's figure rather than the average. Without this the paper would state a false number.</span></div>
+        </div>
+      </div>
+
+      <div class="probe">
+        <div class="probe-head">
+          <h4>Does our data actually support the method?</h4>
+          <span class="probe-tag bad">the big one</span>
+        </div>
+        <div class="probe-body">
+          <div class="probe-row"><span class="k">Why we asked</span><span class="v">The whole detector depends on reading trends across consecutive readings taken close together in time. If the data does not have that shape, there is no trend to detect.</span></div>
+          <div class="probe-row"><span class="k">What we found</span><span class="v">Synthea records vitals at <em>appointments</em>, not bedsides. The median gap between readings is <span class="num">154 days</span>. Of 52 patients, <span class="num">zero</span> had 12 readings within hours of each other. Separately, oxygen saturation is essentially missing (<span class="num">48</span> readings across all patients) and temperature nearly so (<span class="num">73</span>) — and the NEWS2 scoring we planned to use needs both, so we cannot even label the data.</span></div>
+          <div class="probe-row changes"><span class="k">What changes</span><span class="v"><strong>Synthea is abandoned as the primary dataset.</strong> This is the one open decision in the project — see section 6. Note it fails on two independent counts, so fixing the timing alone would not rescue it.</span></div>
+        </div>
+      </div>
+
+      <div class="probe">
+        <div class="probe-head">
+          <h4>Does the planned experiment fit on your laptop?</h4>
+          <span class="probe-tag warn">does not fit, cut needed</span>
+        </div>
+        <div class="probe-body">
+          <div class="probe-row"><span class="k">Why we asked</span><span class="v">There is no point planning 150 training runs if they would take a year. Better to size the experiment to the hardware now than to discover it halfway through.</span></div>
+          <div class="probe-row"><span class="k">What we found</span><span class="v">One full run takes <span class="num">4.1 hours</span> for the memory-based models and <span class="num">43 minutes</span> for the simpler one. The planned 150 runs total roughly <span class="num">22 days</span> of non-stop computing. Separately: the detector needs only <span class="num">0.03 GB</span> of graphics memory, so it shares the GPU with the language model comfortably — a worry that turned out to be unfounded.</span></div>
+          <div class="probe-row changes"><span class="k">What changes</span><span class="v">The experiment must be trimmed. Importantly, the obvious cuts are the wrong ones: dropping model types saves only 17–24%, while halving the number of training rounds saves <span class="num">50%</span> and is not a loss of scope at all. So the first thing to check is whether training has already converged halfway through.</span></div>
+        </div>
+      </div>
+
+      <div class="probe">
+        <div class="probe-head">
+          <h4>Can the real-ECG dataset feed our models?</h4>
+          <span class="probe-tag">works</span>
+        </div>
+        <div class="probe-body">
+          <div class="probe-row"><span class="k">Why we asked</span><span class="v">PTB-XL is our defence against the obvious criticism that everything was tested on simulated data. But it is raw heart-signal recordings, while our models expect tables of vital signs — nobody had worked out how one becomes the other.</span></div>
+          <div class="probe-row"><span class="k">What we found</span><span class="v">Slicing each recording into segments and computing features per segment (heart rate, variability, signal shape) produces exactly the input format our models already accept. Validated end to end.</span></div>
+          <div class="probe-row changes"><span class="k">What changes</span><span class="v">The mapping is settled, so P2 can build it. It also constrains what we may claim: this shows the <em>trend</em> holds on real signals, not that the detector works on real patients. Overstating that would turn our strongest defence into a weakness.</span></div>
+        </div>
+      </div>
+
+      <div class="probe">
+        <div class="probe-head">
+          <h4>Which way should we build the federated system?</h4>
+          <span class="probe-tag">decided</span>
+        </div>
+        <div class="probe-body">
+          <div class="probe-row"><span class="k">Why we asked</span><span class="v">The framework offers two routes — a quick simulated one and a heavier realistic one — and building the wrong one first means building it twice.</span></div>
+          <div class="probe-row"><span class="k">What we found</span><span class="v">The simulated route needs a large extra dependency that is not installed. The realistic route is the one the plan already commits to, because the paper claims genuine separation between wards.</span></div>
+          <div class="probe-row changes"><span class="k">What changes</span><span class="v">Skip the simulation route entirely and build the realistic one directly. Nothing is lost — the separate tests already proved the underlying logic works.</span></div>
+        </div>
+      </div>
+
+      <div class="probe">
+        <div class="probe-head">
+          <h4>Which language model fits 6 GB — and is the small one good enough?</h4>
+          <span class="probe-tag warn">new · changed the plan</span>
+        </div>
+        <div class="probe-body">
+          <div class="probe-row"><span class="k">Why we asked</span><span class="v">Your laptop has 6 GB of graphics memory. The obvious model needs about 5 GB, so it was unclear whether it would run at all — and if a much smaller model were good enough, that would free memory and run faster.</span></div>
+          <div class="probe-row"><span class="k">What we found</span><span class="v"><strong>Speed:</strong> the small 3B model runs <span class="num">66</span> words-per-second entirely on the GPU. The larger 8B model runs at <span class="num">21</span>, with a quarter of it pushed onto the CPU because it does not quite fit. Both are usable — a summary takes about 6 seconds on the larger one.<br><br><strong>Quality, and this reversed our expectation:</strong> given a real alert about a patient with breathing problems, the <em>small model missed the low-oxygen reading entirely</em> — the most clinically important of the three warnings. The larger model caught it and quantified all three correctly.<br><br><strong>And both invented things.</strong> The small one fabricated "a history of exacerbations"; the large one fabricated a 24-hour upward trend. Neither appears anywhere in the patient record.</span></div>
+          <div class="probe-row changes"><span class="k">What changes</span><span class="v"><strong>Use both, split by job:</strong> the 8B model for clinical alert summaries where a missed finding is a real failure, and the 3B for patient chat where speed matters more and stakes are lower.<br><br><strong>And a second, bigger consequence:</strong> our automatic hallucination check reported "none detected" for both models, because it searches for a fixed list of suspicious words and neither invention used one. That is direct proof that word-matching cannot detect fabrication. The paper's summary evaluation must verify each individual claim against the source record, exactly as the research guide specified — we now have a worked example showing why, which is worth putting in the paper.</span></div>
+        </div>
+      </div>
+
+      <div class="probe">
+        <div class="probe-head">
+          <h4>Does the replacement dataset work where Synthea failed?</h4>
+          <span class="probe-tag">resolved · unblocked</span>
+        </div>
+        <div class="probe-body">
+          <div class="probe-row"><span class="k">Why we asked</span><span class="v">Synthea failed on timing and on missing measurements. Before committing to a replacement we ran it through exactly the same tests, rather than trusting that a better-sounding dataset would actually be better.</span></div>
+          <div class="probe-row"><span class="k">What we found</span><span class="v"><strong>The blockers are gone.</strong> Oxygen saturation — the reading Synthea was missing almost entirely — is recorded in <span class="num">86%</span> of hours. Every vital the warning score needs is genuinely measured, and 96% of patients stay long enough to form a window.<br><br><strong>But there is a catch.</strong> Different vitals get recorded at different times, so all six almost never appear in the same hour (under <span class="num">1%</span> of patients). Carrying the most recent value forward — which is what clinicians do when reading a chart — lifts that to <span class="num">~80%</span>, giving roughly <span class="num">800,000</span> usable windows.<br><br><strong>Two surprises.</strong> Deterioration is far rarer than assumed: <span class="num">1.5%</span> of hours rather than the 10–15% planned for. And the two hospitals turn out to differ mainly in <em>what they measure</em> — one records blood glucose twice as often as the other — rather than in their patients.</span></div>
+          <div class="probe-row changes"><span class="k">What changes</span><span class="v"><strong>The dataset question is settled</strong>, and both tracks are unblocked. The paper must <strong>declare that values are carried forward</strong> and report how often, per vital.</span></div>
+        </div>
+      </div>
+
+      <div class="probe">
+        <div class="probe-head">
+          <h4>Can we still label deterioration the way we intended?</h4>
+          <span class="probe-tag">resolved · better than expected</span>
+        </div>
+        <div class="probe-body">
+          <div class="probe-row"><span class="k">Why we asked</span><span class="v">The new dataset comes with its own label — sepsis onset. Using it would have quietly turned the project into a sepsis classifier rather than the deterioration monitor it was always meant to be. The alternative is to ignore that label and compute our own from the vitals, using NEWS2 — the warning score the project originally planned to use, which Synthea made impossible.</span></div>
+          <div class="probe-row"><span class="k">What we found</span><span class="v"><strong>NEWS2 works on this data, and the numbers land where the original plan expected.</strong> Scoring every hour and flagging those at 5 or above gives <span class="num">12.6%</span> of hours as deteriorating — almost exactly the 10–15% the original documents assumed. Roughly half of patients trigger it at some point.<br><br><strong>And we can now check the labels are meaningful.</strong> Comparing them against the dataset's clinically-adjudicated sepsis cases, NEWS2 flagged <span class="num">75%</span> of septic patients in one hospital and <span class="num">60%</span> in the other at some point in their stay. It fires more often than sepsis alone, which is correct — it is a general escalation trigger, not a test for one condition.</span></div>
+          <div class="probe-row changes"><span class="k">What changes</span><span class="v"><strong>The project stays a deterioration monitor.</strong> NEWS2-derived labels are primary; the sepsis label becomes an independent cross-check.<br><br>That cross-check is worth more than it sounds. The original plan was to validate NEWS2 against MEWS — but both are rule-based, so agreement proves only that two rules agree. Checking against real clinical judgement is a genuinely stronger argument, and it turns "our labels are rules, not doctors" from a limitation into a validated method.<br><br>One consequence reverses an earlier decision: at 12.6% the class imbalance is moderate, so the originally planned loss weighting is fine after all and AUC-ROC stays informative. Both it and AUPRC get reported.</span></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ================= 5b. CONSOLIDATED CHANGES ================= -->
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">5b · Consequences</p>
+      <h2>Everything that changed in the plan</h2>
+      <p>All of the above, collapsed into the decisions that now differ from the original documents. This is the practical output of the testing phase.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Area</th><th>Original plan</th><th>Now</th></tr></thead>
+        <tbody>
+          <tr><td>Voice input and output</td><td>Cut from scope</td><td><b>Restored</b> — local speech, demo scope only, not a paper contribution</td></tr>
+          <tr><td>PTB-XL validation</td><td>Essential — the defence against "it's all simulated"</td><td><b>Optional</b> — the main dataset is real, so the objection it answered no longer exists</td></tr>
+          <tr><td>Model layers</td><td>Standard LSTM / GRU</td><td>Privacy-compatible <code>DPLSTM</code> / <code>DPGRU</code></td></tr>
+          <tr><td>Model output</td><td>Squashed scores</td><td>Raw scores — the double-squash bug</td></tr>
+          <tr><td>Privacy accounting</td><td>Per-round setup</td><td>Sized once for the whole run, ledger carried forward, worst ward reported</td></tr>
+          <tr><td>Primary dataset</td><td>Synthea</td><td><b>PhysioNet/CinC 2019 — tested and adopted</b></td></tr>
+          <tr><td>Clinical task</td><td>Deterioration monitoring</td><td><b>Unchanged</b> — the dataset supplies vitals, not the framing</td></tr>
+          <tr><td>Labels</td><td>NEWS2, uncomputable on Synthea</td><td><b>NEWS2 as originally intended</b>, now computable on real vitals</td></tr>
+          <tr><td>Label validation</td><td>Cross-check against MEWS (another rule)</td><td>Cross-check against real clinical adjudication — much stronger</td></tr>
+          <tr><td>Missing readings</td><td>Not considered</td><td>Carry-forward imputation, declared and rate-reported</td></tr>
+          <tr><td>Headline metric</td><td>AUC-ROC</td><td><b>AUPRC</b>, with AUC-ROC alongside</td></tr>
+          <tr><td>Assumed positive rate</td><td>10–15%</td><td>12.6% measured — the original assumption was right</td></tr>
+          <tr><td>Prediction horizon</td><td>Unspecified (effectively 0)</td><td><b>4–6 hours ahead</b> — horizon 0 is near-trivial and would flatten the whole experiment</td></tr>
+          <tr><td>Train / test split</td><td>Unspecified per ward</td><td><b>By patient</b>, never by window</td></tr>
+          <tr><td>Experiment size</td><td>150 runs</td><td>Must be trimmed; cut rounds before cutting scope</td></tr>
+          <tr><td>Federated build route</td><td>Simulation first</td><td>Realistic deployment route directly</td></tr>
+          <tr><td>Language model</td><td>Single 8B model</td><td>8B for alerts, 3B for chat</td></tr>
+          <tr><td>Hallucination checking</td><td>Assumed straightforward</td><td>Must be claim-level; word-matching proven inadequate</td></tr>
+          <tr><td>Statistics for the model comparison</td><td>Pairwise tests, 5 repeats</td><td>Cannot reach significance as specified — replacement still to be chosen</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= 6. THE DECISION ================= -->
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">6 · Resolved</p>
+      <h2>Which data do we build on?</h2>
+      <p><strong>Settled: PhysioNet/CinC 2019.</strong> It was downloaded and put through the same tests Synthea failed, and it passed. The comparison below is kept as the record of why, since your mentor will reasonably ask. Both tracks are now unblocked.</p>
+    </div>
+
+    <div class="plain">
+      <span class="tag">What this means in practice</span>
+      <p>The project remains a <strong>deterioration monitoring</strong> system — the original intent, unchanged. What changed is only the source of the vitals: real hourly ICU records from two hospitals instead of a simulator. Labels are computed from those vitals using NEWS2, exactly as originally planned, which Synthea could not support because it was missing oxygen and temperature readings.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Option</th><th>What it means</th><th>Honest assessment</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>A · Change the story</b></td>
+            <td>Stop calling it continuous monitoring; call it long-term trends across appointments.</td>
+            <td>Does not work. Renaming the time axis does not create the missing oxygen and temperature readings, so you still cannot label the data.</td>
+          </tr>
+          <tr>
+            <td><b>B · Generate the missing data</b></td>
+            <td>Write code to invent plausible vitals between appointments, plus the missing measurements.</td>
+            <td>Possible, but you would be generating most of the signal your paper measures. The main defence of Synthea — that it reflects real clinical pathways — stops applying to the part that matters.</td>
+          </tr>
+          <tr style="background: var(--ok-soft);">
+            <td><b>D · PhysioNet 2019 sepsis dataset</b><br><span style="color:var(--ok);font-weight:650;font-size:.85rem">CHOSEN — tested and passed</span></td>
+            <td>A free, open dataset of hourly ICU vitals with deterioration already labelled.</td>
+            <td>Downloaded and verified: oxygen saturation present in 86% of hours, every needed vital measured, 40,336 patients, ~800,000 usable windows, two hospital systems. Requires carrying values forward between readings, which is standard practice but must be declared.</td>
+          </tr>
+          <tr>
+            <td><b>E · eICU</b></td>
+            <td>Apply for access to records from 208 hospitals.</td>
+            <td>The strongest possible version of the "learning across sites" story, because the sites are real hospitals rather than slices of one population. Needs approval, but a small open sample exists to build against meanwhile.</td>
+          </tr>
+          <tr>
+            <td><b>C · MIMIC-IV</b></td>
+            <td>Apply for access to real de-identified ICU records.</td>
+            <td>Genuine frequent monitoring and real oxygen and temperature. Its ICU units give naturally different wards. Needs approval; an open ~100-patient sample is available immediately.</td>
+          </tr>
+          <tr>
+            <td><b>H · Use PTB-XL as the main dataset</b></td>
+            <td>Promote the real-ECG data from a side check to the primary source.</td>
+            <td>Zero blockers — it is open, real, and we have already proven it feeds the models. Cost: the project becomes ECG analysis rather than ward monitoring.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="prose">
+      <h3>One honest caveat about the federation story</h3>
+      <p>The two hospital systems turned out to be more alike than hoped. Median age 65.5 versus 64, deterioration rate 6.1% versus 5.6%, stay length 39 versus 37 hours — the patients are broadly similar. Where the sites genuinely differ is in <em>measurement practice</em>: one records blood glucose almost twice as often as the other, and respiratory rate coverage differs by twelve points.</p>
+      <p>That is real institutional variation, and sites disagreeing about what to measure is a genuine obstacle in deployed federated healthcare — arguably a more interesting problem than differing patient mixes. But it is milder than the ICU-versus-maternity contrast the original design imagined. If you want stronger separation between clients, split each hospital further by intensive-care unit or age band.</p>
+      <p>This still reverses what your prototype guide decided, so bring it to your mentor as a decision rather than presenting it as already done. The licence is confirmed open (ODbL, no application required) — that was checked directly.</p>
+    </div>
+  </section>
+
+  <!-- ================= 7. NEXT ================= -->
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">7 · Next</p>
+      <h2>What to do on Monday</h2>
+    </div>
+
+    <div class="next">
+      <ol>
+        <li><b>Take the dataset switch to your mentor.</b> Bring both sets of numbers: why Synthea failed (154-day gaps, no oxygen readings) and why the replacement passed (86% oxygen coverage, 800,000 usable windows, real labels). The evidence makes the case for you. This is the only item that needs someone else's agreement.</li>
+        <li><b>Settle the statistics question.</b> The comparison test currently planned cannot produce a significant result no matter what the experiments show — there are too few repeats for the correction being applied. Choose the replacement now, because it changes how many runs you need.</li>
+        <li><b>Change the success metric to AUPRC.</b> At 1.5% deterioration, the currently planned measure stays high regardless of how well the model works. This is a one-line change in the plan that prevents a misleading result section.</li>
+        <li><b>Decide how many federated clients you want.</b> Two hospitals is the honest minimum; splitting each by unit or age band gives more clients and stronger differences between them.</li>
+        <li><b>Fill in the remaining boxes in <code>P0_MEMO.md</code>.</b> Most measurements are already filled in; what is left is decisions. P0 is finished when nothing in it reads "we will figure it out later."</li>
+        <li><b>Then start P1.</b> Every P0 answer is an input to the scope lock. With the dataset settled, this is now genuinely close.</li>
+      </ol>
+    </div>
+  </section>
+
+  <footer>
+    Companion to the NLP-06 execution plan and the P0 spike guide. Findings in section 5 were measured on this machine and are stored as JSON in <code>NLP_06/p0/results/</code>. Everything in sections 4 and 7 is plan, not fact.
+  </footer>
+
+</div>
+</body>
+</html>

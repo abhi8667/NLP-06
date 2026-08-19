@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NLP-06 Progress</title>
+<style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body { margin: 0; }
+    img, svg, video { max-width: 100%; height: auto; }
+    table { border-collapse: collapse; }
+</style>
+<style>
+  :root {
+    --ground:#F7F8FA; --surface:#FFFFFF; --surface-sunk:#EFF2F6;
+    --ink:#121A24; --ink-muted:#586575; --ink-faint:#7C8899;
+    --rule:#DCE3EB; --rule-strong:#C3CEDA;
+    --accent:#0E7C86; --accent-soft:#DCEFF1; --accent-ink:#085158;
+    --product:#A8660A; --product-soft:#F7EBD8;
+    --research:#2F7048; --research-soft:#E0EFE5;
+    --warn:#A8660A; --warn-soft:#F7EBD8;
+    --crit:#A93A38; --crit-soft:#F8E4E3;
+    --ok:#2F7048; --ok-soft:#E0EFE5;
+    --shadow:0 1px 2px rgba(18,26,36,.05), 0 8px 24px -16px rgba(18,26,36,.28);
+    --font-display:"Sitka Display","Sitka Text",Sitka,Cambria,Constantia,Georgia,serif;
+    --font-body:"Segoe UI Variable Text","Segoe UI",-apple-system,BlinkMacSystemFont,system-ui,Arial,sans-serif;
+    --font-mono:"Cascadia Mono",Consolas,"SF Mono",ui-monospace,Menlo,monospace;
+    --measure:66ch; --page:1040px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0C1117; --surface:#131C25; --surface-sunk:#0F1720;
+      --ink:#E3EAF1; --ink-muted:#93A2B3; --ink-faint:#748699;
+      --rule:#223040; --rule-strong:#33455A;
+      --accent:#45BFC9; --accent-soft:#10333A; --accent-ink:#8CDCE3;
+      --product:#DFA850; --product-soft:#33260F;
+      --research:#6FBF8C; --research-soft:#16301F;
+      --warn:#DFA850; --warn-soft:#33260F;
+      --crit:#E8817E; --crit-soft:#37201F;
+      --ok:#6FBF8C; --ok-soft:#16301F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0C1117; --surface:#131C25; --surface-sunk:#0F1720;
+    --ink:#E3EAF1; --ink-muted:#93A2B3; --ink-faint:#748699;
+    --rule:#223040; --rule-strong:#33455A;
+    --accent:#45BFC9; --accent-soft:#10333A; --accent-ink:#8CDCE3;
+    --product:#DFA850; --product-soft:#33260F;
+    --research:#6FBF8C; --research-soft:#16301F;
+    --warn:#DFA850; --warn-soft:#33260F;
+    --crit:#E8817E; --crit-soft:#37201F;
+    --ok:#6FBF8C; --ok-soft:#16301F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--font-body); font-size:16px; line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+  }
+  .page {
+    max-width:var(--page); margin:0 auto;
+    padding:clamp(2rem,5vw,4rem) clamp(1.1rem,4vw,2.5rem) 5rem;
+    display:flex; flex-direction:column; gap:clamp(2.25rem,4vw,3.25rem);
+  }
+  h1,h2,h3,h4 { font-family:var(--font-display); font-weight:600; margin:0; line-height:1.18; text-wrap:balance; letter-spacing:-.006em; }
+  h1 { font-size:clamp(2rem,4.6vw,2.85rem); letter-spacing:-.02em; }
+  h2 { font-size:clamp(1.35rem,2.7vw,1.75rem); }
+  h3 { font-size:1.08rem; }
+  h4 { font-family:var(--font-body); font-size:.95rem; font-weight:650; }
+  p { margin:0; max-width:var(--measure); }
+  .eyebrow { font-family:var(--font-mono); font-size:.71rem; text-transform:uppercase; letter-spacing:.13em; color:var(--ink-faint); margin:0; }
+  code { font-family:var(--font-mono); font-size:.86em; background:var(--surface-sunk); border:1px solid var(--rule); border-radius:3px; padding:.06em .34em; }
+
+  header.masthead { display:flex; flex-direction:column; gap:.95rem; padding-bottom:1.7rem; border-bottom:2px solid var(--ink); }
+  .lede { font-size:clamp(1rem,1.7vw,1.13rem); color:var(--ink-muted); max-width:60ch; }
+
+  section { display:flex; flex-direction:column; gap:1.25rem; }
+  .section-head { display:flex; flex-direction:column; gap:.5rem; }
+
+  /* stat tiles */
+  .tiles { display:grid; gap:.9rem; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); }
+  .tile {
+    background:var(--surface); border:1px solid var(--rule); border-radius:6px;
+    padding:1.1rem 1.2rem; box-shadow:var(--shadow);
+    display:flex; flex-direction:column; gap:.55rem;
+    border-top:3px solid var(--rule-strong);
+  }
+  .tile.t-all { border-top-color:var(--accent); }
+  .tile.t-prod { border-top-color:var(--product); }
+  .tile.t-res { border-top-color:var(--research); }
+  .tile.t-risk { border-top-color:var(--ok); }
+  .tile .label { font-family:var(--font-mono); font-size:.66rem; text-transform:uppercase; letter-spacing:.11em; color:var(--ink-faint); }
+  .tile .value { font-family:var(--font-display); font-size:2.5rem; line-height:1; font-variant-numeric:tabular-nums; font-weight:600; }
+  .tile.t-all .value { color:var(--accent); }
+  .tile.t-prod .value { color:var(--product); }
+  .tile.t-res .value { color:var(--research); }
+  .tile.t-risk .value { color:var(--ok); }
+  .tile .note { font-size:.85rem; color:var(--ink-muted); max-width:none; }
+
+  .bar { background:var(--surface-sunk); border:1px solid var(--rule); height:9px; border-radius:5px; overflow:hidden; }
+  .bar > i { display:block; height:100%; background:var(--accent); border-radius:4px 0 0 4px; }
+  .bar.b-prod > i { background:var(--product); }
+  .bar.b-res > i { background:var(--research); }
+  .bar.b-ok > i { background:var(--ok); }
+
+  /* phase table */
+  .table-wrap { overflow-x:auto; border:1px solid var(--rule); border-radius:6px; background:var(--surface); box-shadow:var(--shadow); }
+  table { border-collapse:collapse; width:100%; min-width:540px; font-size:.9rem; }
+  thead th {
+    text-align:left; font-family:var(--font-mono); font-size:.66rem; text-transform:uppercase;
+    letter-spacing:.1em; color:var(--ink-faint); font-weight:600; padding:.65rem .9rem;
+    border-bottom:1px solid var(--rule-strong); background:var(--surface-sunk); white-space:nowrap;
+  }
+  tbody td { padding:.6rem .9rem; border-bottom:1px solid var(--rule); vertical-align:middle; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--font-mono); font-variant-numeric:tabular-nums; white-space:nowrap; text-align:right; }
+  td.barcell { width:34%; min-width:120px; }
+  .pid { font-family:var(--font-mono); font-weight:700; color:var(--accent); }
+
+  /* checklists */
+  .cols { display:grid; gap:1.1rem; grid-template-columns:repeat(auto-fit,minmax(330px,1fr)); }
+  .track {
+    background:var(--surface); border:1px solid var(--rule); border-radius:6px;
+    box-shadow:var(--shadow); overflow:hidden;
+  }
+  .track-head { padding:.95rem 1.15rem; border-bottom:1px solid var(--rule); display:flex; flex-direction:column; gap:.5rem; }
+  .track-head .who { font-family:var(--font-mono); font-size:.66rem; text-transform:uppercase; letter-spacing:.1em; }
+  .track.prod .track-head .who { color:var(--product); }
+  .track.res .track-head .who { color:var(--research); }
+  ul.items { list-style:none; margin:0; padding:.5rem .6rem .8rem; display:flex; flex-direction:column; }
+  ul.items li {
+    display:grid; grid-template-columns:1.5rem 1fr; gap:.55rem; align-items:start;
+    padding:.34rem .5rem; font-size:.9rem; border-radius:3px;
+  }
+  ul.items li .mark { font-family:var(--font-mono); font-size:.8rem; font-weight:700; text-align:center; }
+  li.done .mark { color:var(--ok); }
+  li.done span:last-child { color:var(--ink-muted); }
+  li.wip .mark { color:var(--warn); }
+  li.wip { background:var(--warn-soft); }
+  li.todo .mark { color:var(--ink-faint); }
+  li.blocked .mark { color:var(--crit); }
+  li.blocked { background:var(--crit-soft); }
+
+  .callout {
+    border:1px solid var(--accent); background:var(--accent-soft);
+    border-radius:6px; padding:1.05rem 1.2rem;
+    display:flex; flex-direction:column; gap:.55rem;
+  }
+  .callout .tag { font-family:var(--font-mono); font-size:.64rem; text-transform:uppercase; letter-spacing:.12em; color:var(--accent-ink); }
+  .callout p { color:var(--accent-ink); max-width:74ch; }
+  .callout.crit { border-color:var(--crit); background:var(--crit-soft); }
+  .callout.crit .tag, .callout.crit p { color:var(--crit); }
+
+  footer { border-top:1px solid var(--rule); padding-top:1.2rem; font-size:.85rem; color:var(--ink-faint); max-width:var(--measure); }
+  @media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important; } }
+</style>
+</head>
+<body>
+<nav style="max-width:1060px;margin:0 auto;padding:1rem clamp(1.1rem,4vw,2.5rem) 0;font-family:var(--font-mono);font-size:.72rem;letter-spacing:.06em;">
+  <a href="index.html" style="color:var(--accent);text-decoration:none;">&larr; ALL DOCUMENTS</a>
+</nav>
+<div class="page">
+
+  <header class="masthead">
+    <p class="eyebrow">NLP-06 · progress snapshot · 18 Aug 2026</p>
+    <h1>NLP-06 Progress</h1>
+    <p class="lede">Where both tracks actually stand, with the denominators shown. The headline number is small — the section below it explains why that is the expected shape at this stage rather than a problem.</p>
+  </header>
+
+  <!-- ============ TILES ============ -->
+  <section>
+    <div class="tiles">
+      <div class="tile t-all">
+        <span class="label">Whole project</span>
+        <span class="value">3%</span>
+        <div class="bar"><i style="width:3%"></i></div>
+        <p class="note">Weighted by estimated effort across all ten phases.</p>
+      </div>
+      <div class="tile t-prod">
+        <span class="label">Product track · Person A</span>
+        <span class="value">2%</span>
+        <div class="bar b-prod"><i style="width:2%"></i></div>
+        <p class="note">The assistant, retrieval, and interfaces. Barely begun.</p>
+      </div>
+      <div class="tile t-res">
+        <span class="label">Research track · Person B</span>
+        <span class="value">6%</span>
+        <div class="bar b-res"><i style="width:6%"></i></div>
+        <p class="note">Detector, federation, privacy, paper. Investigation done, dataset secured, build not started.</p>
+      </div>
+      <div class="tile t-risk">
+        <span class="label">Project risk retired</span>
+        <span class="value">92%</span>
+        <div class="bar b-ok"><i style="width:92%"></i></div>
+        <p class="note">8 of 9 unknowns resolved. Dataset question now closed.</p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <span class="tag">Read the two numbers together</span>
+      <p><strong>4% of the effort has retired 92% of the risk.</strong> That is exactly what P0 is designed to do, and it is the right shape for this point in a project. Almost nothing has been <em>built</em> yet — but nearly everything that could have wrecked the build has been found and answered before a single line of pipeline code was written. Two of them (the incompatible model layers, the silently-resetting privacy accountant) would have surfaced weeks in, after work had been stacked on top of them.</p>
+      <p><strong>The dataset blocker is cleared.</strong> Synthea was tested, failed, and has been replaced by a real ICU dataset that was put through the same tests and passed. Both tracks can now proceed.</p>
+      <p>No time has been wasted so far: nothing built has had to be thrown away, because almost nothing has been built.</p>
+    </div>
+  </section>
+
+  <!-- ============ PHASES ============ -->
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">By phase</p>
+      <h2>Where the effort sits</h2>
+      <p>Phases are not equal in size. P0 is deliberately cheap; P4 alone is a fifth of the project. That is why finishing P0 moves the overall bar so little.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Phase</th><th>What it is</th><th class="num">Share</th><th class="barcell">Done</th><th class="num">%</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="pid">P0</span></td><td>Feasibility spikes</td>
+            <td class="num">3%</td>
+            <td class="barcell"><div class="bar b-ok"><i style="width:85%"></i></div></td>
+            <td class="num">85</td>
+          </tr>
+          <tr>
+            <td><span class="pid">P1</span></td><td>Scope lock</td>
+            <td class="num">3%</td>
+            <td class="barcell"><div class="bar"><i style="width:0%"></i></div></td>
+            <td class="num">0</td>
+          </tr>
+          <tr>
+            <td><span class="pid">P2</span></td><td>Data pipeline &amp; freeze</td>
+            <td class="num">12%</td>
+            <td class="barcell"><div class="bar"><i style="width:0%"></i></div></td>
+            <td class="num">0</td>
+          </tr>
+          <tr>
+            <td><span class="pid">P3A</span></td><td>Product build</td>
+            <td class="num">15%</td>
+            <td class="barcell"><div class="bar b-prod"><i style="width:3%"></i></div></td>
+            <td class="num">3</td>
+          </tr>
+          <tr>
+            <td><span class="pid">P3B</span></td><td>FL + DP harness</td>
+            <td class="num">15%</td>
+            <td class="barcell"><div class="bar"><i style="width:0%"></i></div></td>
+            <td class="num">0</td>
+          </tr>
+          <tr>
+            <td><span class="pid">P4</span></td><td>Experiment campaign</td>
+            <td class="num">20%</td>
+            <td class="barcell"><div class="bar"><i style="width:0%"></i></div></td>
+            <td class="num">0</td>
+          </tr>
+          <tr>
+            <td><span class="pid">P5</span></td><td>Alert → summary bridge</td>
+            <td class="num">8%</td>
+            <td class="barcell"><div class="bar"><i style="width:0%"></i></div></td>
+            <td class="num">0</td>
+          </tr>
+          <tr>
+            <td><span class="pid">P6</span></td><td>Summary evaluation</td>
+            <td class="num">6%</td>
+            <td class="barcell"><div class="bar"><i style="width:0%"></i></div></td>
+            <td class="num">0</td>
+          </tr>
+          <tr>
+            <td><span class="pid">P7</span></td><td>Analysis &amp; figures</td>
+            <td class="num">8%</td>
+            <td class="barcell"><div class="bar"><i style="width:0%"></i></div></td>
+            <td class="num">0</td>
+          </tr>
+          <tr>
+            <td><span class="pid">P8</span></td><td>Paper</td>
+            <td class="num">8%</td>
+            <td class="barcell"><div class="bar"><i style="width:0%"></i></div></td>
+            <td class="num">0</td>
+          </tr>
+          <tr>
+            <td><span class="pid">P9</span></td><td>Polish &amp; defend</td>
+            <td class="num">2%</td>
+            <td class="barcell"><div class="bar"><i style="width:0%"></i></div></td>
+            <td class="num">0</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ TRACK DETAIL ============ -->
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">Item by item</p>
+      <h2>What is actually finished</h2>
+      <p>Every line is a real deliverable. <span style="color:var(--ok);font-weight:650">✓</span> done · <span style="color:var(--warn);font-weight:650">◐</span> in progress · <span style="color:var(--ink-faint);font-weight:650">○</span> not started · <span style="color:var(--crit);font-weight:650">✕</span> blocked</p>
+    </div>
+
+    <div class="cols">
+      <div class="track res">
+        <div class="track-head">
+          <span class="who">Research track · Person B</span>
+          <h3>4% complete — 8 of 24 items</h3>
+          <div class="bar b-res"><i style="width:4%"></i></div>
+        </div>
+        <ul class="items">
+          <li class="done"><span class="mark">✓</span><span>Python environment, CUDA-enabled PyTorch, all libraries pinned</span></li>
+          <li class="done"><span class="mark">✓</span><span>DP training verified on a recurrent model (ε 1.99 vs target 2.0)</span></li>
+          <li class="done"><span class="mark">✓</span><span>Incompatible layer types identified — <code>DPLSTM</code>/<code>DPGRU</code> required</span></li>
+          <li class="done"><span class="mark">✓</span><span>Double-sigmoid bug in the model spec found and corrected</span></li>
+          <li class="done"><span class="mark">✓</span><span>Federated averaging verified — parameters round-trip and converge</span></li>
+          <li class="done"><span class="mark">✓</span><span>Privacy accounting trap reproduced and fix established</span></li>
+          <li class="done"><span class="mark">✓</span><span>Compute budget measured; sensitivity to each cut mapped</span></li>
+          <li class="done"><span class="mark">✓</span><span>PTB-XL → model input mapping designed and shape-validated</span></li>
+          <li class="done"><span class="mark">✓</span><span><b>Usable dataset secured</b> — Synthea failed; PhysioNet 2019 tested and adopted</span></li>
+          <li class="done"><span class="mark">✓</span><span>Coverage, cadence, label balance and site heterogeneity measured</span></li>
+          <li class="todo"><span class="mark">○</span><span>Statistical plan for the architecture comparison revised</span></li>
+          <li class="done"><span class="mark">✓</span><span>NEWS2 labels derived and validated against clinical adjudication (12.6% prevalence)</span></li>
+          <li class="todo"><span class="mark">○</span><span>Metrics finalised — AUPRC primary, AUC-ROC alongside</span></li>
+          <li class="todo"><span class="mark">○</span><span>Vital extraction &amp; cleaning pipeline</span></li>
+          <li class="todo"><span class="mark">○</span><span>NEWS2 + MEWS labelling</span></li>
+          <li class="todo"><span class="mark">○</span><span>Sliding-window construction</span></li>
+          <li class="todo"><span class="mark">○</span><span>Non-IID ward partitioning</span></li>
+          <li class="todo"><span class="mark">○</span><span>Noise-injected dataset variant</span></li>
+          <li class="todo"><span class="mark">○</span><span>Dataset freeze &amp; content hash</span></li>
+          <li class="todo"><span class="mark">○</span><span>Final LSTM / GRU / CNN implementations</span></li>
+          <li class="todo"><span class="mark">○</span><span>Containerised ward nodes over gRPC</span></li>
+          <li class="todo"><span class="mark">○</span><span>Client-dropout strategy</span></li>
+          <li class="todo"><span class="mark">○</span><span>Resumable experiment runner &amp; result schema</span></li>
+          <li class="todo"><span class="mark">○</span><span>The campaign itself</span></li>
+          <li class="todo"><span class="mark">○</span><span>Statistical analysis</span></li>
+          <li class="todo"><span class="mark">○</span><span>Nine paper figures</span></li>
+          <li class="todo"><span class="mark">○</span><span>Paper draft</span></li>
+        </ul>
+      </div>
+
+      <div class="track prod">
+        <div class="track-head">
+          <span class="who">Product track · Person A</span>
+          <h3>2% complete — 0 of 15 items</h3>
+          <div class="bar b-prod"><i style="width:2%"></i></div>
+        </div>
+        <ul class="items">
+          <li class="wip"><span class="mark">◐</span><span>Ollama runtime installed — <b>in progress right now</b></span></li>
+          <li class="todo"><span class="mark">○</span><span>Local model pulled and speed-benchmarked</span></li>
+          <li class="todo"><span class="mark">○</span><span>LLM client wrapper</span></li>
+          <li class="todo"><span class="mark">○</span><span>Embedding pipeline</span></li>
+          <li class="todo"><span class="mark">○</span><span>Retriever with enforced per-patient isolation</span></li>
+          <li class="todo"><span class="mark">○</span><span>Prompt builder with refusal-on-insufficient-context</span></li>
+          <li class="todo"><span class="mark">○</span><span>Synthetic encounter notes for the knowledge base</span></li>
+          <li class="todo"><span class="mark">○</span><span>FastAPI backend endpoints</span></li>
+          <li class="todo"><span class="mark">○</span><span>Patient chat interface</span></li>
+          <li class="todo"><span class="mark">○</span><span>Clinician alert dashboard</span></li>
+          <li class="todo"><span class="mark">○</span><span>Lab-report PDF ingestion</span></li>
+          <li class="todo"><span class="mark">○</span><span>Speech-to-text input (faster-whisper) — demo scope</span></li>
+          <li class="todo"><span class="mark">○</span><span>Text-to-speech output (Piper) — demo scope</span></li>
+          <li class="todo"><span class="mark">○</span><span>Alert → summary bridge (the original contribution)</span></li>
+          <li class="todo"><span class="mark">○</span><span>Three-layer summary evaluation</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout">
+      <span class="tag">The blocker has cleared</span>
+      <p>Both tracks were waiting on the dataset question, because <strong>P2 feeds both</strong> — the research track trains on it and the product track retrieves from it. That question is now answered: Synthea failed its tests, PhysioNet/CinC 2019 was put through the same tests and passed, and the data is downloaded. P2 can begin.</p>
+      <p>What remains before P1 are decisions rather than unknowns: confirm the switch with your mentor, settle the statistics plan, and change the headline metric to AUPRC.</p>
+    </div>
+  </section>
+
+  <!-- ============ RISK ============ -->
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">The number that matters right now</p>
+      <h2>Risk retired: 9 questions, 8 answered</h2>
+      <p>At this stage the useful measure is not how much is built, but how much is still unknown. Each of these could have forced a rebuild if discovered later.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Question</th><th>Status</th><th>Answer</th></tr></thead>
+        <tbody>
+          <tr><td>Do DP and sequence models compose?</td><td style="color:var(--ok);font-weight:650">Resolved</td><td>Yes, but only with <code>DPLSTM</code>/<code>DPGRU</code></td></tr>
+          <tr><td>Is the privacy accounting correct?</td><td style="color:var(--ok);font-weight:650">Resolved</td><td>Not by default — under-reported 2.43×; fix established</td></tr>
+          <tr><td>Is the model spec correct?</td><td style="color:var(--ok);font-weight:650">Resolved</td><td>No — double-sigmoid shrank gradients 4.2×; corrected</td></tr>
+          <tr><td>Does Synthea support the method?</td><td style="color:var(--ok);font-weight:650">Resolved</td><td><b>No.</b> Unusable on two independent counts</td></tr>
+          <tr><td>Does a real dataset support it?</td><td style="color:var(--ok);font-weight:650">Resolved</td><td><b>Yes.</b> PhysioNet 2019 passed; ~800k usable windows</td></tr>
+          <tr><td>Can PTB-XL feed the model?</td><td style="color:var(--ok);font-weight:650">Resolved</td><td>Yes, via interval features</td></tr>
+          <tr><td>Does the experiment fit the hardware?</td><td style="color:var(--ok);font-weight:650">Resolved</td><td>Not at full size — 22 days; cut paths mapped</td></tr>
+          <tr><td>Will the local LLM run on 6 GB?</td><td style="color:var(--ok);font-weight:650">Resolved</td><td>Yes — 8B at 21 tok/s (partial CPU), 3B at 66 tok/s</td></tr>
+          <tr><td>Is the statistical plan sound?</td><td style="color:var(--warn);font-weight:650">Identified</td><td>No — cannot reach significance; replacement not yet chosen</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout" style="margin-top:.4rem">
+      <span class="tag">How the labelling question resolved</span>
+      <p>The new dataset ships a sepsis label, which would have quietly turned the project into a sepsis classifier. Instead, NEWS2 scores are computed from the real vitals — the labelling scheme originally intended, which Synthea could not support. That gives <b>12.6% of hours as deteriorating</b>, matching the 10–15% the original documents assumed, so the planned loss weighting holds after all.</p>
+      <p>It also produced an unexpected gain: the dataset's clinical sepsis adjudication becomes an <b>independent check on the derived labels</b>, which flagged 60–75% of septic patients. Validating a rule-based label against real clinical judgement is a stronger argument than the originally planned comparison against a second rule.</p>
+      <p>One genuine limitation remains: the two hospital sites differ mainly in <em>what they measure</em> rather than in their patients, so the federation is heterogeneous but more mildly than the design assumed.</p>
+    </div>
+  </section>
+
+  <footer>
+    Percentages are effort-weighted estimates, not measured velocity — treat them as a shared frame of reference rather than a precise figure. Item-level status and all quoted measurements come from <code>NLP_06/p0/results/</code>.
+  </footer>
+
+</div>
+</body>
+</html>

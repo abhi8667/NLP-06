@@ -1,0 +1,29 @@
+{
+  "captured_utc": "2026-08-17T13:35:50+00:00",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "python": "3.11.15",
+  "python_executable": "C:\\Hacks\\NLP_06\\p0\\.venv\\Scripts\\python.exe",
+  "packages": {
+    "torch": "2.13.0+cu126",
+    "opacus": "1.6.0",
+    "flwr": "1.33.0",
+    "numpy": "2.4.6",
+    "pandas": "3.0.5",
+    "sklearn": "1.9.0",
+    "scipy": "1.17.1",
+    "wfdb": "4.3.1",
+    "neurokit2": "0.2.12"
+  },
+  "tools": {
+    "java": "java version \"17.0.12\" 2024-07-16 LTS",
+    "git": "git version 2.51.0.windows.2",
+    "ollama": null
+  },
+  "gpu": {
+    "available": true,
+    "torch_cuda_build": "12.6",
+    "name": "NVIDIA GeForce RTX 4050 Laptop GPU",
+    "total_vram_gb": 6.0,
+    "capability": "8.9"
+  }
+}

@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NLP-06 Documentation</title>
+<style>
+  :root {
+    --ground:#F7F8FA; --surface:#FFFFFF; --surface-sunk:#EFF2F6;
+    --ink:#121A24; --ink-muted:#586575; --ink-faint:#7C8899;
+    --rule:#DCE3EB; --rule-strong:#C3CEDA;
+    --accent:#0E7C86; --accent-soft:#DCEFF1; --accent-ink:#085158;
+    --warn:#A8660A; --warn-soft:#F7EBD8;
+    --crit:#A93A38; --crit-soft:#F8E4E3;
+    --ok:#2F7048; --ok-soft:#E0EFE5;
+    --shadow:0 1px 2px rgba(18,26,36,.05), 0 8px 24px -16px rgba(18,26,36,.28);
+    --font-display:"Sitka Display","Sitka Text",Sitka,Cambria,Constantia,Georgia,serif;
+    --font-body:"Segoe UI Variable Text","Segoe UI",-apple-system,BlinkMacSystemFont,system-ui,Arial,sans-serif;
+    --font-mono:"Cascadia Mono",Consolas,"SF Mono",ui-monospace,Menlo,monospace;
+    --measure:66ch; --page:900px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0C1117; --surface:#131C25; --surface-sunk:#0F1720;
+      --ink:#E3EAF1; --ink-muted:#93A2B3; --ink-faint:#748699;
+      --rule:#223040; --rule-strong:#33455A;
+      --accent:#45BFC9; --accent-soft:#10333A; --accent-ink:#8CDCE3;
+      --warn:#DFA850; --warn-soft:#33260F;
+      --crit:#E8817E; --crit-soft:#37201F;
+      --ok:#6FBF8C; --ok-soft:#16301F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0C1117; --surface:#131C25; --surface-sunk:#0F1720;
+    --ink:#E3EAF1; --ink-muted:#93A2B3; --ink-faint:#748699;
+    --rule:#223040; --rule-strong:#33455A;
+    --accent:#45BFC9; --accent-soft:#10333A; --accent-ink:#8CDCE3;
+    --warn:#DFA850; --warn-soft:#33260F;
+    --crit:#E8817E; --crit-soft:#37201F;
+    --ok:#6FBF8C; --ok-soft:#16301F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  *, *::before, *::after { box-sizing:border-box; }
+  html { -webkit-text-size-adjust:100%; }
+  body { margin:0; background:var(--ground); color:var(--ink);
+         font-family:var(--font-body); font-size:16px; line-height:1.62; -webkit-font-smoothing:antialiased; }
+  .page { max-width:var(--page); margin:0 auto;
+          padding:clamp(2rem,5vw,4rem) clamp(1.1rem,4vw,2.5rem) 5rem;
+          display:flex; flex-direction:column; gap:clamp(2rem,4vw,3rem); }
+
+  h1,h2,h3 { font-family:var(--font-display); font-weight:600; margin:0; line-height:1.18; text-wrap:balance; letter-spacing:-.006em; }
+  h1 { font-size:clamp(2rem,5vw,2.85rem); letter-spacing:-.02em; }
+  h2 { font-size:clamp(1.3rem,2.6vw,1.6rem); }
+  p { margin:0; max-width:var(--measure); }
+  .eyebrow { font-family:var(--font-mono); font-size:.71rem; text-transform:uppercase; letter-spacing:.13em; color:var(--ink-faint); margin:0; }
+  code { font-family:var(--font-mono); font-size:.86em; background:var(--surface-sunk); border:1px solid var(--rule); border-radius:3px; padding:.06em .34em; }
+
+  header { display:flex; flex-direction:column; gap:.9rem; padding-bottom:1.6rem; border-bottom:2px solid var(--ink); }
+  .lede { font-size:clamp(1rem,1.7vw,1.13rem); color:var(--ink-muted); max-width:60ch; }
+
+  .docs { display:flex; flex-direction:column; gap:.85rem; }
+  a.doc {
+    display:grid; grid-template-columns:2.6rem 1fr auto; gap:.6rem 1rem; align-items:start;
+    background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--rule-strong);
+    border-radius:6px; padding:1rem 1.2rem; box-shadow:var(--shadow);
+    text-decoration:none; color:inherit; transition:border-color .15s, transform .15s;
+  }
+  a.doc:hover, a.doc:focus-visible { border-left-color:var(--accent); transform:translateX(2px); outline:none; }
+  a.doc:focus-visible { box-shadow:0 0 0 2px var(--accent); }
+  a.doc.primary { border-left-color:var(--accent); }
+  a.doc.authoritative { border-left-color:var(--ok); }
+  .num { font-family:var(--font-mono); font-size:.95rem; font-weight:700; color:var(--ink-faint); padding-top:.1rem; }
+  .doc-main { display:flex; flex-direction:column; gap:.25rem; min-width:0; }
+  .doc-main h3 { font-size:1.08rem; }
+  .doc-main p { font-size:.91rem; color:var(--ink-muted); max-width:62ch; }
+  .badge {
+    font-family:var(--font-mono); font-size:.6rem; text-transform:uppercase; letter-spacing:.09em;
+    padding:.2rem .5rem; border-radius:3px; white-space:nowrap; align-self:start;
+    border:1px solid var(--rule-strong); color:var(--ink-faint); background:var(--surface-sunk);
+  }
+  .badge.start { color:var(--accent-ink); background:var(--accent-soft); border-color:var(--accent); }
+  .badge.auth { color:var(--ok); background:var(--ok-soft); border-color:var(--ok); }
+  @media (max-width:600px) {
+    a.doc { grid-template-columns:2rem 1fr; }
+    a.doc .badge { grid-column:2; }
+  }
+
+  .panel {
+    background:var(--surface); border:1px solid var(--rule); border-radius:6px;
+    padding:1.1rem 1.25rem; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:.6rem;
+  }
+  .panel ul { margin:0; padding-left:1.15rem; display:flex; flex-direction:column; gap:.35rem; }
+  .panel li { font-size:.93rem; color:var(--ink-muted); }
+  .panel li b { color:var(--ink); font-weight:650; }
+
+  .note { border-left:3px solid var(--warn); background:var(--warn-soft); padding:.75rem 1rem;
+          border-radius:0 4px 4px 0; font-size:.92rem; max-width:none; }
+  .note b { font-weight:650; }
+
+  footer { border-top:1px solid var(--rule); padding-top:1.2rem; font-size:.85rem; color:var(--ink-faint); max-width:var(--measure); }
+  @media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <p class="eyebrow">NLP-06 · privacy-preserving healthcare assistant</p>
+    <h1>Project Documentation</h1>
+    <p class="lede">Five documents covering the whole project — what it is, what was decided, where it stands, and how to build it. Read in order the first time; after that, jump to what you need.</p>
+  </header>
+
+  <section class="docs">
+    <a class="doc primary" href="01_field_guide.html">
+      <span class="num">01</span>
+      <span class="doc-main">
+        <h3>Field Guide</h3>
+        <p>What the project is, in plain words. Every technical term explained with why it is used, what each test found, and what changed as a result. Assumes no prior knowledge.</p>
+      </span>
+      <span class="badge start">start here</span>
+    </a>
+
+    <a class="doc authoritative" href="02_scope_lock.html">
+      <span class="num">02</span>
+      <span class="doc-main">
+        <h3>Scope Lock</h3>
+        <p>The canonical specification. Every contradiction between the original four documents resolved, plus the locked scope, technology stack, data specification and experimental protocol.</p>
+      </span>
+      <span class="badge auth">authoritative</span>
+    </a>
+
+    <a class="doc" href="03_progress.html">
+      <span class="num">03</span>
+      <span class="doc-main">
+        <h3>Progress</h3>
+        <p>Where both tracks stand, item by item, with the risk-retired counterweight to the completion percentage.</p>
+      </span>
+      <span class="badge">status</span>
+    </a>
+
+    <a class="doc" href="04_execution_phases.html">
+      <span class="num">04</span>
+      <span class="doc-main">
+        <h3>Execution Phases</h3>
+        <p>Ten phases ordered by dependency, each with an owner and a falsifiable exit gate. Includes the critical path and the de-scoping ladder.</p>
+      </span>
+      <span class="badge">plan</span>
+    </a>
+
+    <a class="doc" href="05_p0_spike_guide.html">
+      <span class="num">05</span>
+      <span class="doc-main">
+        <h3>P0 Spike Guide</h3>
+        <p>How the feasibility tests were designed and run. Largely historical now that P0 is complete — keep it for the methodology.</p>
+      </span>
+      <span class="badge">method</span>
+    </a>
+  </section>
+
+  <section>
+    <h2>Precedence</h2>
+    <div class="note">
+      <b>The Scope Lock wins.</b> Where it disagrees with the Project PRD, Technical Execution Plan, Prototype Guide or Research Guide, follow the Scope Lock. Those four remain useful for background and detail but are no longer authoritative on anything the Scope Lock specifies.
+      <br><br>
+      When an open item closes, <b>update the Scope Lock</b> rather than recording the decision elsewhere. That is what stops it becoming a sixth document that disagrees with the others.
+    </div>
+  </section>
+
+  <section>
+    <h2>Also in this project</h2>
+    <div class="panel">
+      <ul>
+        <li><b><code>../p0/P0_MEMO.md</code></b> — the P0 decision memo: measurements filled in, decisions still to record</li>
+        <li><b><code>../p0/README.md</code></b> — how to run the environment and each spike</li>
+        <li><b><code>../p0/scripts/</code></b> — nine spike scripts, throwaway by design</li>
+        <li><b><code>../p0/results/</code></b> — ten JSON files; every measured claim in these documents traces to one of them</li>
+        <li><b><code>../physioNet/</code></b> — the adopted dataset, 40,336 patients across two hospital systems</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>Open items</h2>
+    <div class="panel">
+      <ul>
+        <li><b>Statistical plan</b> — the specified comparison cannot reach significance at any outcome. Blocking, because it sets the seed count and therefore the compute budget.</li>
+        <li><b>Base paper citations b2 and b3</b> — different titles, and different years for b3, between documents. Resolve against the actual papers before the related-work section is written.</li>
+        <li><b>Number of federated clients</b> — two real hospital systems, or subdivide for stronger heterogeneity.</li>
+        <li><b>Mentor sign-off on the dataset switch</b> — this reverses what the Prototype Guide decided.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Generated from the published artifact set. These are standalone copies — the live versions are on claude.ai and may be newer. Measured claims derive from tests run on the project hardware during P0.
+  </footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,751 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P0 Feasibility Spikes</title>
+<style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body { margin: 0; }
+    img, svg, video { max-width: 100%; height: auto; }
+    table { border-collapse: collapse; }
+</style>
+<style>
+  :root {
+    --ground:        #F7F8FA;
+    --surface:       #FFFFFF;
+    --surface-sunk:  #EFF2F6;
+    --code-bg:       #ECF0F5;
+    --ink:           #121A24;
+    --ink-muted:     #586575;
+    --ink-faint:     #7C8899;
+    --rule:          #DCE3EB;
+    --rule-strong:   #C3CEDA;
+    --accent:        #0E7C86;
+    --accent-soft:   #DCEFF1;
+    --accent-ink:    #085158;
+    --warn:          #A8660A;
+    --warn-soft:     #F7EBD8;
+    --crit:          #A93A38;
+    --crit-soft:     #F8E4E3;
+    --ok:            #2F7048;
+    --ok-soft:       #E0EFE5;
+    --shadow:        0 1px 2px rgba(18, 26, 36, .05), 0 8px 24px -16px rgba(18, 26, 36, .28);
+
+    --font-display: "Sitka Display", "Sitka Text", Sitka, Cambria, Constantia, Georgia, serif;
+    --font-body: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "Cascadia Mono", Consolas, "SF Mono", ui-monospace, "Roboto Mono", Menlo, monospace;
+
+    --measure: 70ch;
+    --page: 1000px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:       #0C1117;
+      --surface:      #131C25;
+      --surface-sunk: #0F1720;
+      --code-bg:      #0A1017;
+      --ink:          #E3EAF1;
+      --ink-muted:    #93A2B3;
+      --ink-faint:    #748699;
+      --rule:         #223040;
+      --rule-strong:  #33455A;
+      --accent:       #45BFC9;
+      --accent-soft:  #10333A;
+      --accent-ink:   #8CDCE3;
+      --warn:         #DFA850;
+      --warn-soft:    #33260F;
+      --crit:         #E8817E;
+      --crit-soft:    #37201F;
+      --ok:           #6FBF8C;
+      --ok-soft:      #16301F;
+      --shadow:       0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:       #0C1117;
+    --surface:      #131C25;
+    --surface-sunk: #0F1720;
+    --code-bg:      #0A1017;
+    --ink:          #E3EAF1;
+    --ink-muted:    #93A2B3;
+    --ink-faint:    #748699;
+    --rule:         #223040;
+    --rule-strong:  #33455A;
+    --accent:       #45BFC9;
+    --accent-soft:  #10333A;
+    --accent-ink:   #8CDCE3;
+    --warn:         #DFA850;
+    --warn-soft:    #33260F;
+    --crit:         #E8817E;
+    --crit-soft:    #37201F;
+    --ok:           #6FBF8C;
+    --ok-soft:      #16301F;
+    --shadow:       0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: var(--page);
+    margin: 0 auto;
+    padding: clamp(2rem, 5vw, 4.5rem) clamp(1.1rem, 4vw, 2.5rem) 6rem;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(2.5rem, 4.5vw, 3.75rem);
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    text-wrap: balance;
+    margin: 0;
+    line-height: 1.18;
+    letter-spacing: -.006em;
+  }
+  h1 { font-size: clamp(2.05rem, 5vw, 3rem); letter-spacing: -.02em; }
+  h2 { font-size: clamp(1.42rem, 2.8vw, 1.85rem); }
+  h3 { font-size: 1.1rem; }
+  h4 { font-family: var(--font-body); font-size: .97rem; font-weight: 650; }
+  p  { margin: 0; max-width: var(--measure); }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: .715rem;
+    text-transform: uppercase;
+    letter-spacing: .13em;
+    color: var(--ink-faint);
+    margin: 0;
+  }
+
+  a { color: var(--accent); text-underline-offset: 2px; }
+  a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: .875em;
+    background: var(--surface-sunk);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: .06em .34em;
+  }
+  pre {
+    margin: 0;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: .9rem 1rem;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: .8rem;
+    line-height: 1.6;
+    color: var(--ink);
+  }
+  pre code { background: none; border: none; padding: 0; font-size: inherit; }
+  .cmd-label {
+    font-family: var(--font-mono);
+    font-size: .655rem;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--ink-faint);
+    margin-bottom: .35rem;
+    display: block;
+  }
+
+  header.masthead {
+    display: flex; flex-direction: column; gap: 1.05rem;
+    padding-bottom: 1.9rem;
+    border-bottom: 2px solid var(--ink);
+  }
+  .lede { font-size: clamp(1.01rem, 1.7vw, 1.14rem); color: var(--ink-muted); max-width: 64ch; }
+  .masthead-meta {
+    display: flex; flex-wrap: wrap; gap: .5rem 1.4rem;
+    font-family: var(--font-mono); font-size: .74rem;
+    letter-spacing: .05em; color: var(--ink-faint); text-transform: uppercase;
+  }
+
+  section { display: flex; flex-direction: column; gap: 1.35rem; }
+  .section-head { display: flex; flex-direction: column; gap: .5rem; }
+
+  /* prerequisites */
+  .prereq {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 5px;
+    box-shadow: var(--shadow); overflow: hidden;
+  }
+  .prereq-row {
+    display: grid; grid-template-columns: 11rem 1fr; gap: .9rem;
+    padding: .75rem 1.05rem; border-bottom: 1px solid var(--rule); font-size: .92rem;
+  }
+  .prereq-row:last-child { border-bottom: none; }
+  .prereq-row b { font-family: var(--font-mono); font-size: .82rem; font-weight: 600; color: var(--accent-ink); }
+  .prereq-row span { color: var(--ink-muted); }
+  @media (max-width: 620px) { .prereq-row { grid-template-columns: 1fr; gap: .2rem; } }
+
+  /* spikes */
+  .spike {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 5px;
+    box-shadow: var(--shadow); display: grid; grid-template-columns: 4px 1fr; overflow: hidden;
+  }
+  .spike-stripe { background: var(--accent); }
+  .spike[data-risk="high"] .spike-stripe { background: var(--crit); }
+  .spike[data-risk="med"]  .spike-stripe { background: var(--warn); }
+  .spike-body { padding: 1.3rem 1.4rem 1.5rem; display: flex; flex-direction: column; gap: 1.15rem; }
+  .spike-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem .85rem; }
+  .spike-id { font-family: var(--font-mono); font-size: .85rem; font-weight: 700; color: var(--accent); letter-spacing: .04em; }
+  .spike-head h2 { flex: 1 1 18ch; font-size: 1.32rem; }
+  .chip {
+    font-family: var(--font-mono); font-size: .655rem; text-transform: uppercase;
+    letter-spacing: .09em; padding: .2rem .5rem; border-radius: 3px;
+    border: 1px solid var(--rule-strong); color: var(--ink-muted);
+    background: var(--surface-sunk); white-space: nowrap;
+  }
+  .chip.risk-high { color: var(--crit); background: var(--crit-soft); border-color: var(--crit); }
+  .chip.risk-med  { color: var(--warn); background: var(--warn-soft); border-color: var(--warn); }
+
+  .question {
+    font-size: 1rem; padding: .75rem .95rem; border-radius: 4px;
+    background: var(--accent-soft); color: var(--accent-ink);
+    border: 1px solid var(--accent); max-width: none;
+  }
+  .question b { font-weight: 650; }
+
+  ol.steps { margin: 0; padding: 0; list-style: none; counter-reset: step; display: flex; flex-direction: column; gap: 1.05rem; }
+  ol.steps > li { display: grid; grid-template-columns: 1.85rem 1fr; gap: .85rem; align-items: start; }
+  ol.steps > li::before {
+    counter-increment: step; content: counter(step);
+    font-family: var(--font-mono); font-size: .78rem; font-weight: 700;
+    color: var(--accent-ink); background: var(--accent-soft);
+    border: 1px solid var(--accent); border-radius: 50%;
+    width: 1.7rem; height: 1.7rem; display: grid; place-items: center;
+    margin-top: .1rem;
+  }
+  .step-body { display: flex; flex-direction: column; gap: .6rem; min-width: 0; }
+  .step-body > p { font-size: .94rem; }
+
+  .note {
+    border-left: 3px solid var(--warn); background: var(--warn-soft);
+    padding: .65rem .9rem; border-radius: 0 4px 4px 0; font-size: .9rem; max-width: none;
+  }
+  .note.trap { border-left-color: var(--crit); background: var(--crit-soft); }
+  .note-label {
+    font-family: var(--font-mono); font-size: .64rem; text-transform: uppercase;
+    letter-spacing: .11em; color: var(--warn); display: block; margin-bottom: .2rem;
+  }
+  .note.trap .note-label { color: var(--crit); }
+
+  .decision {
+    background: var(--surface-sunk); border: 1px solid var(--rule-strong);
+    border-radius: 4px; padding: .95rem 1.05rem;
+    display: flex; flex-direction: column; gap: .6rem;
+  }
+  .decision-label {
+    font-family: var(--font-mono); font-size: .655rem; text-transform: uppercase;
+    letter-spacing: .12em; color: var(--ink-faint);
+  }
+  .branch { display: grid; grid-template-columns: auto 1fr; gap: .55rem .8rem; align-items: baseline; font-size: .91rem; }
+  .branch dt { font-family: var(--font-mono); font-size: .76rem; font-weight: 700; white-space: nowrap; }
+  .branch dt.pass { color: var(--ok); }
+  .branch dt.fail { color: var(--crit); }
+  .branch dd { margin: 0; }
+
+  .table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 5px; background: var(--surface); box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: .89rem; }
+  thead th {
+    text-align: left; font-family: var(--font-mono); font-size: .67rem;
+    text-transform: uppercase; letter-spacing: .1em; color: var(--ink-faint);
+    font-weight: 600; padding: .68rem .9rem; border-bottom: 1px solid var(--rule-strong);
+    background: var(--surface-sunk); white-space: nowrap;
+  }
+  tbody td { padding: .65rem .9rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num { font-variant-numeric: tabular-nums; font-family: var(--font-mono); font-size: .83rem; white-space: nowrap; }
+
+  .gate-card {
+    background: var(--surface); border: 1px solid var(--rule-strong); border-radius: 5px;
+    padding: 1.15rem 1.3rem; box-shadow: var(--shadow);
+    display: flex; flex-direction: column; gap: .7rem;
+  }
+  .gate-card ul { margin: 0; padding-left: 1.15rem; display: flex; flex-direction: column; gap: .4rem; }
+  .gate-card li { font-size: .94rem; }
+  .gate-card li::marker { color: var(--accent); }
+
+  footer {
+    border-top: 1px solid var(--rule); padding-top: 1.3rem;
+    font-size: .85rem; color: var(--ink-faint); max-width: var(--measure);
+  }
+
+  @media (max-width: 640px) {
+    .spike { grid-template-columns: 3px 1fr; }
+    .spike-body { padding: 1.05rem 1rem 1.2rem; }
+    ol.steps > li { grid-template-columns: 1.55rem 1fr; gap: .6rem; }
+    ol.steps > li::before { width: 1.45rem; height: 1.45rem; font-size: .7rem; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<nav style="max-width:1060px;margin:0 auto;padding:1rem clamp(1.1rem,4vw,2.5rem) 0;font-family:var(--font-mono);font-size:.72rem;letter-spacing:.06em;">
+  <a href="index.html" style="color:var(--accent);text-decoration:none;">&larr; ALL DOCUMENTS</a>
+</nav>
+<div class="page">
+
+  <header class="masthead">
+    <p class="eyebrow">NLP-06 · Phase P0 · companion to the execution plan</p>
+    <h1>P0 Feasibility Spikes</h1>
+    <p class="lede">Four questions to answer before committing to the build. The deliverable is four written decisions, not four working systems — resist the urge to start building the real thing inside a spike.</p>
+    <div class="masthead-meta">
+      <span>Time-box: ~1 week</span>
+      <span>Owner: A + B in parallel</span>
+      <span>Output: one decision memo</span>
+    </div>
+
+    <div class="note trap" style="margin-top:.5rem">
+      <span class="note-label">Historical record — P0 is complete</span>
+      This describes how the spikes were <em>designed and run</em>, and it is accurate as that. But several of its recommendations were overtaken by the results those same spikes produced. Three in particular:
+      <br><br>
+      <b>S1 tests Synthea, which failed</b> and has been replaced by PhysioNet/CinC 2019. <b>Its advice to start a MIMIC application is now unnecessary</b> — the replacement needs no credentialing. And <b>the claim that PTB-XL is "the single highest-leverage item in your whole plan" is no longer true</b>: that rested on the primary dataset being synthetic, which it no longer is.
+      <br><br>
+      For current specification, follow the <b>Scope Lock</b>. Read this one for method, not for decisions.
+    </div>
+  </header>
+
+  <!-- ============ PREREQS ============ -->
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">Step 0</p>
+      <h2>Prerequisites</h2>
+      <p>Install these first and record the exact versions — the spikes are only meaningful if the numbers they produce came from the environment you will actually build in.</p>
+    </div>
+
+    <div class="prereq">
+      <div class="prereq-row"><b>Java 17+</b><span>Synthea requires it. Verify with <code>java -version</code>. Synthea ships <code>run_synthea.bat</code> for Windows.</span></div>
+      <div class="prereq-row"><b>Python 3.11</b><span>You have 3.11 and 3.12 installed. Prefer 3.11 — wheel coverage for Flower and Opacus is more reliable there.</span></div>
+      <div class="prereq-row"><b>PyTorch</b><span>Install the CUDA build if you have an NVIDIA GPU, otherwise CPU. Confirm which you got before timing anything.</span></div>
+      <div class="prereq-row"><b>Opacus + Flower</b><span>Pin exact versions in <code>requirements.txt</code> now. Flower's API has changed substantially across 1.x releases; the version you pin determines which simulation API the docs you follow will match.</span></div>
+      <div class="prereq-row"><b>Ollama</b><span>Not needed for S1–S3, but pull the model during P0 so S4 can measure GPU contention between LLM inference and DP training.</span></div>
+      <div class="prereq-row"><b>Disk</b><span>Budget ~10&nbsp;GB: Synthea output, PTB-XL at 100&nbsp;Hz, model weights.</span></div>
+    </div>
+
+    <div>
+      <span class="cmd-label">Record this before anything else</span>
+      <pre><code>python -c "import torch, sys; print('python', sys.version.split()[0]); print('torch', torch.__version__); print('cuda available:', torch.cuda.is_available()); print('device:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU only')"
+python -c "import opacus, flwr; print('opacus', opacus.__version__); print('flwr', flwr.__version__)"</code></pre>
+    </div>
+  </section>
+
+  <!-- ============ S1 ============ -->
+  <section>
+    <article class="spike" data-risk="high">
+      <div class="spike-stripe"></div>
+      <div class="spike-body">
+        <div class="spike-head">
+          <span class="spike-id">S1</span>
+          <h2>Does Synthea emit vitals at ward cadence?</h2>
+          <span class="chip risk-high">blocks the core claim</span>
+        </div>
+
+        <p class="question"><b>The question:</b> can you form a 12-timestep window of six vitals whose readings sit hours apart rather than months apart? If not, your windows are life-history, and the "real-time telemetry" gap you claim against b5 cannot be claimed on this dataset.</p>
+
+        <ol class="steps">
+          <li><div class="step-body">
+            <h4>Generate a small cohort</h4>
+            <p>Fifty patients is plenty — you are measuring a distribution, not training anything.</p>
+            <pre><code>git clone https://github.com/synthetichealth/synthea.git
+cd synthea
+.\run_synthea.bat -p 50 --exporter.csv.export true --exporter.fhir.export false</code></pre>
+            <p>Output lands in <code>synthea/output/csv/</code>. You need <code>observations.csv</code>.</p>
+          </div></li>
+
+          <li><div class="step-body">
+            <h4>Check whether timestamps even carry a time of day</h4>
+            <p>This is the fastest possible disqualifier. If Synthea writes date-only values, or writes every observation at the same clock time, sub-day cadence is not representable at all and the rest of the spike is moot.</p>
+            <pre><code>import pandas as pd
+
+df = pd.read_csv("synthea/output/csv/observations.csv", low_memory=False)
+print(df["DATE"].astype(str).head(10).tolist())
+
+df["DATE"] = pd.to_datetime(df["DATE"], errors="coerce", utc=True)
+print("rows:", len(df))
+print("distinct times-of-day:", df["DATE"].dt.time.nunique())</code></pre>
+            <p>A distinct-times count in the single digits means observations are pinned to synthetic clock slots, not sampled through a day.</p>
+          </div></li>
+
+          <li><div class="step-body">
+            <h4>Find out what Synthea actually emits — don't assume your LOINC list</h4>
+            <p>Your guide fixes seven codes up front. Verify they are present and frequent before building a pipeline around them; Synthea's code choice varies by module and version.</p>
+            <pre><code>top = (df.groupby(["CODE", "DESCRIPTION"]).size()
+         .sort_values(ascending=False).head(25))
+print(top.to_string())
+
+VITALS = ["8867-4", "8480-6", "8462-4", "59408-5", "9279-1", "8310-5", "2339-0"]
+present = df[df["CODE"].isin(VITALS)]["CODE"].value_counts()
+print("\nyour seven codes, as found:")
+print(present.reindex(VITALS).fillna(0).astype(int).to_string())</code></pre>
+            <div class="note"><span class="note-label">Expect a surprise here</span>Any code returning 0 needs substituting before P2. SpO2 and glucose are the two most likely to differ from the codes in your guide.</div>
+          </div></li>
+
+          <li><div class="step-body">
+            <h4>Measure the gap distribution</h4>
+            <pre><code>v = df[df["CODE"].isin(VITALS)].sort_values(["PATIENT", "CODE", "DATE"]).copy()
+v["gap_h"] = (v.groupby(["PATIENT", "CODE"])["DATE"]
+                .diff().dt.total_seconds() / 3600)
+
+print(v.groupby("CODE")["gap_h"]
+       .describe(percentiles=[.25, .5, .75])
+       .round(1).to_string())</code></pre>
+            <p>Read the median column. Hours means telemetry. Thousands of hours means annual checkups.</p>
+          </div></li>
+
+          <li><div class="step-body">
+            <h4>The decisive test — can a 12-step window be formed at all?</h4>
+            <p>A median gap is suggestive; this is the actual requirement. Count patients who have a run of 13 consecutive readings where every gap is within a tolerance.</p>
+            <pre><code>def longest_run(times, max_gap_h):
+    """Longest run of readings each within max_gap_h of the previous one."""
+    t = times.sort_values()
+    if len(t) &lt; 2:
+        return len(t)
+    within = t.diff().dt.total_seconds().div(3600).le(max_gap_h)
+    best = run = 1
+    for flag in within.iloc[1:]:
+        run = run + 1 if flag else 1
+        best = max(best, run)
+    return best
+
+hr = v[v["CODE"] == "8867-4"]
+for tol in [1, 6, 24, 24 * 7, 24 * 30]:
+    runs = hr.groupby("PATIENT")["DATE"].apply(longest_run, max_gap_h=tol)
+    n_ok = int((runs &gt;= 13).sum())
+    print(f"max gap {tol:&gt;6}h -&gt; {n_ok:&gt;3}/{runs.size} patients can form a 12-step window")</code></pre>
+          </div></li>
+        </ol>
+
+        <div class="decision">
+          <span class="decision-label">Decision rule</span>
+          <dl class="branch">
+            <dt class="pass">PASS</dt>
+            <dd>Most patients form windows at a tolerance of 24h or tighter. Proceed exactly as planned; record the tolerance you will use in P2.</dd>
+            <dt class="fail">FAIL</dt>
+            <dd>Few or no patients form windows below a multi-week tolerance. Synthea has clinical structure but no telemetry. Choose one of the three paths below and write down which.</dd>
+          </dl>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>If S1 fails</th><th>What you keep</th><th>What it costs</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><b>A · Reframe honestly</b><br>Call the unit a longitudinal encounter sequence, not ward telemetry.</td>
+                <td>C1 and C2 survive completely intact — they are about DP noise and sequence models, and neither depends on the sampling interval.</td>
+                <td>You lose the b5 real-time-telemetry gap claim. The deployment framing narrows to periodic review rather than continuous monitoring.</td>
+              </tr>
+              <tr>
+                <td><b>B · Synthesize the telemetry</b><br>Generate hourly vitals between Synthea encounters, conditioned on conditions and outcomes.</td>
+                <td>The ward-monitoring framing, and the non-IID ward design.</td>
+                <td>The telemetry is now your own generative model, not Synthea's validated care pathways. The "widely accepted substitute" defense weakens exactly where reviewers will press.</td>
+              </tr>
+              <tr>
+                <td><b>C · Move to MIMIC-IV</b><br>Use <code>chartevents</code> for real ICU telemetry.</td>
+                <td>Everything, plus it eliminates the data-realism objection your own Research Guide names as the biggest one.</td>
+                <td>Credentialing delay. Mitigated by starting it now and using Synthea as the pipeline stand-in meanwhile.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note">
+          <span class="note-label">Worth reconsidering either way</span>
+          Your Prototype Guide dropped MIMIC entirely. Submit the credentialing application during P0 regardless of how S1 turns out — it costs a few hours of CITI training, the review clock is long, and having it pending is free optionality at the one moment in the project when starting the clock is cheapest. Note also that MIMIC-IV's care units (MICU, SICU, CCU, CVICU, TSICU) give you <em>naturally occurring</em> non-IID federation partitions, which is a stronger story than synthetic ward skew — the main advantage you attributed to Synthea is weaker than it looks.
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <!-- ============ S2 ============ -->
+  <section>
+    <article class="spike" data-risk="high">
+      <div class="spike-stripe"></div>
+      <div class="spike-body">
+        <div class="spike-head">
+          <span class="spike-id">S2</span>
+          <h2>Do Opacus, Flower, and a sequence model actually compose?</h2>
+          <span class="chip risk-high">highest engineering risk</span>
+        </div>
+
+        <p class="question"><b>The question:</b> can one ward node train a recurrent model under DP-SGD inside a federated round and report a privacy budget that means what the paper will claim it means? Build this in the order below — each layer is only debuggable once the one beneath it is known good.</p>
+
+        <ol class="steps">
+          <li><div class="step-body">
+            <h4>Confirm the model is even DP-compatible</h4>
+            <p>Opacus computes per-sample gradients and cannot do so for every layer type. Run the validator before anything else.</p>
+            <pre><code>import torch.nn as nn
+from opacus.validators import ModuleValidator
+
+plain = nn.LSTM(6, 64, num_layers=2, batch_first=True)
+print(ModuleValidator.validate(plain, strict=False))</code></pre>
+            <div class="note trap">
+              <span class="note-label">Trap 1 · this breaks the model code in your guide</span>
+              <code>nn.LSTM</code> and <code>nn.GRU</code> are not supported. Opacus ships <code>DPLSTM</code> and <code>DPGRU</code> in <code>opacus.layers</code> as drop-in replacements, and <code>ModuleValidator.fix()</code> will not substitute them for you. The LSTM and GRU classes in your Research Guide will fail at <code>make_private</code> as written.
+            </div>
+          </div></li>
+
+          <li><div class="step-body">
+            <h4>Smoke test A — DP training on one node, no federation</h4>
+            <pre><code>import torch, torch.nn as nn
+from torch.utils.data import TensorDataset, DataLoader
+from opacus import PrivacyEngine
+from opacus.layers import DPLSTM
+
+class Net(nn.Module):
+    def __init__(self, inp=6, hid=64, layers=2):
+        super().__init__()
+        self.rnn = DPLSTM(inp, hid, layers, batch_first=True)
+        self.fc  = nn.Linear(hid, 1)
+    def forward(self, x):
+        out, _ = self.rnn(x)
+        return self.fc(out[:, -1, :])        # logits, NOT sigmoid
+
+X = torch.randn(2048, 12, 6)
+y = (torch.rand(2048) &gt; 0.85).float()
+dl = DataLoader(TensorDataset(X, y), batch_size=32, shuffle=True)
+
+model = Net()
+opt   = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+crit  = nn.BCEWithLogitsLoss()
+
+pe = PrivacyEngine()
+model, opt, dl = pe.make_private_with_epsilon(
+    module=model, optimizer=opt, data_loader=dl,
+    target_epsilon=2.0, target_delta=1e-5,
+    epochs=5, max_grad_norm=1.0,
+)
+
+for _ in range(5):
+    for xb, yb in dl:
+        opt.zero_grad()
+        crit(model(xb).squeeze(-1), yb).backward()
+        opt.step()
+
+print("achieved epsilon:", pe.get_epsilon(delta=1e-5))</code></pre>
+            <div class="note trap">
+              <span class="note-label">Trap 2 · a real bug in your model spec</span>
+              Your Research Guide's models end with <code>torch.sigmoid(self.fc(...))</code>, while the data plan specifies <code>BCEWithLogitsLoss</code> with <code>pos_weight</code> for class imbalance. That loss applies sigmoid internally — feeding it already-sigmoided output squashes predictions into roughly [0.5, 0.73] and gradients nearly vanish. Return raw logits, as above, or switch to plain <code>BCELoss</code> and lose the <code>pos_weight</code> handling. Fix this in the spec now, not after a training run looks mysteriously flat.
+            </div>
+          </div></li>
+
+          <li><div class="step-body">
+            <h4>Smoke test B — federation with no DP</h4>
+            <p>Two clients, two rounds, FedAvg, plain <code>nn.LSTM</code>. Confirm the loop runs and loss moves. Use your pinned Flower version's own simulation API — this is where version churn bites, so follow the docs for the exact version you pinned rather than a blog post.</p>
+            <p>You are checking one thing only: that parameters make the round trip and aggregation happens. Do not add DP yet.</p>
+          </div></li>
+
+          <li><div class="step-body">
+            <h4>Smoke test C — compose them, and check the accountant across rounds</h4>
+            <p>Now combine: DPLSTM, per-client <code>PrivacyEngine</code>, two federated rounds. Then run the test that matters.</p>
+            <pre><code># Run 2 rounds. Print epsilon after round 1 and after round 2.
+# If the two numbers are IDENTICAL, your accountant is resetting
+# every round and your "epsilon over 100 rounds" claim is false.</code></pre>
+            <div class="note trap">
+              <span class="note-label">Trap 3 · the accounting claim most likely to be wrong</span>
+              A fresh <code>PrivacyEngine</code> per round starts a fresh accountant, so the ε you print is per-round, not cumulative. C4 claims a tight bound across 100 rounds — that requires accounting over all of them. The defensible fix is to size the noise once for the total step count and hold it fixed:
+              <pre style="margin-top:.6rem"><code>from opacus.accountants.utils import get_noise_multiplier
+
+TOTAL_STEPS = ROUNDS * LOCAL_EPOCHS * steps_per_epoch
+sigma = get_noise_multiplier(
+    target_epsilon=2.0, target_delta=1e-5,
+    sample_rate=batch_size / len(local_dataset),
+    steps=TOTAL_STEPS, accountant="rdp",
+)
+# then make_private(noise_multiplier=sigma, max_grad_norm=1.0) each round</code></pre>
+              Note also that the import path in your Research Guide (<code>opacus.accountant.analysis.rdp</code>) does not exist — the module is <code>opacus.accountants</code>, plural, and <code>get_noise_multiplier</code> lives in its <code>utils</code>.
+            </div>
+          </div></li>
+
+          <li><div class="step-body">
+            <h4>Decide and record what your ε actually protects</h4>
+            <p>Opacus gives sample-level DP within each client. Your samples are sliding windows, and one patient contributes many overlapping windows — so a per-window ε of 2 does <em>not</em> mean each patient enjoys ε&nbsp;=&nbsp;2. Under group privacy, a patient contributing k windows carries a substantially looser bound.</p>
+            <div class="note">
+              <span class="note-label">Reviewers in health privacy will ask this</span>
+              Decide now and state it explicitly in the paper: either report the unit of privacy as the window and give the implied patient-level bound alongside it, or restructure sampling so the privacy unit is the patient. Do not let the paper imply patient-level protection from a window-level accountant.
+            </div>
+          </div></li>
+        </ol>
+
+        <div class="decision">
+          <span class="decision-label">Decision rule</span>
+          <dl class="branch">
+            <dt class="pass">PASS</dt>
+            <dd>Smoke test C runs, ε accumulates across rounds, and per-round wall-clock is recorded. Feed that timing straight into S4.</dd>
+            <dt class="fail">FAIL</dt>
+            <dd>Time-box expired. Fall back to the 1D CNN alone, which Opacus supports natively — but understand this guts C2, since the whole contribution is recurrent versus convolutional. Escalate to the mentor before accepting that trade.</dd>
+          </dl>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <!-- ============ S3 ============ -->
+  <section>
+    <article class="spike" data-risk="med">
+      <div class="spike-stripe"></div>
+      <div class="spike-body">
+        <div class="spike-head">
+          <span class="spike-id">S3</span>
+          <h2>How does PTB-XL become model input?</h2>
+          <span class="chip risk-med">design decision, not a build</span>
+        </div>
+
+        <p class="question"><b>The question:</b> PTB-XL is 10-second 12-lead waveforms; your models take a <code>[batch, 12, 6]</code> tensor of tabular vitals. No mapping between them exists in any of your documents. Since PTB-XL is the single highest-leverage item in your whole plan, the mapping needs deciding before P2 builds a pipeline for it.</p>
+
+        <ol class="steps">
+          <li><div class="step-body">
+            <h4>Get the 100&nbsp;Hz version only</h4>
+            <p>The 500&nbsp;Hz records are roughly ten times the size and buy you nothing at this stage. Open access, no credentialing.</p>
+          </div></li>
+
+          <li><div class="step-body">
+            <h4>Inspect one record and confirm the shape</h4>
+            <p>Load a single record with <code>wfdb</code>. You should see roughly 1000 samples × 12 leads for a 10-second strip at 100&nbsp;Hz. Confirm this before planning anything around it.</p>
+          </div></li>
+
+          <li><div class="step-body">
+            <h4>Settle the labels</h4>
+            <p>Use <code>scp_statements.csv</code> to map SCP codes to diagnostic superclasses, then collapse to binary: NORM versus everything else. Record the resulting class balance — it will differ markedly from your Synthea anomaly rate, and that difference has to be handled or acknowledged when comparing curves.</p>
+          </div></li>
+
+          <li><div class="step-body">
+            <h4>Choose the mapping — recommended path first</h4>
+            <p><b>Option A, recommended.</b> Extract per-interval physiological features and build windows from those: heart rate, RR-interval variability, QRS duration, ST level, T-wave amplitude, per-lead voltage statistics. Segment the 10-second strip into intervals and compute features per interval, giving windows of timesteps × features that your existing architecture consumes unchanged. <code>neurokit2</code> handles the R-peak detection and delineation.</p>
+            <p><b>Option B, acceptable.</b> Accept a different input width for PTB-XL and claim only that the <em>shape</em> of the ε-utility curve transfers, not absolute F1. Cheaper, and honest.</p>
+            <p><b>Not defensible.</b> Naively downsampling twelve raw leads into a 12&nbsp;×&nbsp;12 grid to force shape compatibility. It is arithmetically neat and physiologically meaningless, and a reviewer who knows ECG will say so.</p>
+          </div></li>
+
+          <li><div class="step-body">
+            <h4>Write down what the PTB-XL result will and will not claim</h4>
+            <div class="note">
+              <span class="note-label">Phrase this carefully in the paper</span>
+              PTB-XL is diagnostic ECG classification, not deterioration detection from ward vitals. The defensible claim is that the ε-utility <em>trend</em> observed on synthetic vitals also appears on real physiological signals — evidence that your finding is not a synthetic-data artifact. It is not evidence that your anomaly detector works on real patients. Overclaiming here converts your strongest defensive asset into an attack surface.
+            </div>
+          </div></li>
+        </ol>
+
+        <div class="decision">
+          <span class="decision-label">Decision rule</span>
+          <dl class="branch">
+            <dt class="pass">DONE</dt>
+            <dd>The mapping is written down, one sample tensor of the right shape exists, and the claim wording is drafted.</dd>
+          </dl>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <!-- ============ S4 ============ -->
+  <section>
+    <article class="spike" data-risk="med">
+      <div class="spike-stripe"></div>
+      <div class="spike-body">
+        <div class="spike-head">
+          <span class="spike-id">S4</span>
+          <h2>Does the experimental grid fit the compute you have?</h2>
+          <span class="chip risk-med">sizes every later phase</span>
+        </div>
+
+        <p class="question"><b>The question:</b> how long does one full run actually take on your hardware, and does the grid you have specified fit in the calendar time available? Cut the grid here, deliberately — not in Phase 4, in a panic.</p>
+
+        <ol class="steps">
+          <li><div class="step-body">
+            <h4>Time one run at the real configuration</h4>
+            <p>Not a reduced smoke-test config — the real one: full rounds, all clients, real local epochs, DPLSTM. Time a few rounds and extrapolate linearly.</p>
+            <div class="note">
+              <span class="note-label">Expect this to hurt</span>
+              <code>DPLSTM</code> is materially slower than <code>nn.LSTM</code>, which uses fused cuDNN kernels that per-sample gradient computation cannot use. Per-sample gradients also multiply memory. Measure it; do not estimate it from experience with ordinary training.
+            </div>
+          </div></li>
+
+          <li><div class="step-body">
+            <h4>Do the arithmetic</h4>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Grid</th><th>Composition</th><th class="num">Runs</th></tr></thead>
+                <tbody>
+                  <tr><td>Core, clean Synthea</td><td>3 models × 6 ε levels × 5 seeds</td><td class="num">90</td></tr>
+                  <tr><td>Noise-injected Synthea</td><td>best model × 6 ε × 5 seeds</td><td class="num">30</td></tr>
+                  <tr><td>PTB-XL</td><td>best model × 6 ε × 5 seeds</td><td class="num">30</td></tr>
+                  <tr><td><b>Total</b></td><td>before any dropout or heterogeneity runs</td><td class="num"><b>150</b></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Multiply by your measured per-run time. At 20 minutes a run that is 50 hours; at 90 minutes it is 225 hours, which is over nine days of uninterrupted compute — on a machine Person A also needs for Ollama.</p>
+          </div></li>
+
+          <li><div class="step-body">
+            <h4>Measure GPU contention</h4>
+            <p>Run a DP training round while Ollama serves a query. If they collide badly, decide now whether the product demo and the campaign get separate machines, separate time windows, or CPU-only inference.</p>
+          </div></li>
+
+          <li><div class="step-body">
+            <h4>Fix the grid, and fix the seed count with the statistics in mind</h4>
+            <p>The seed count is not only a compute decision — it determines what C2 can conclude. As flagged in the execution plan, five seeds per group with twelve Bonferroni-corrected pairwise tests cannot reach significance under any outcome, because the smallest attainable p at that sample size sits above the corrected threshold.</p>
+            <div class="note">
+              <span class="note-label">Resolve both together</span>
+              Either adopt a single omnibus model over architecture × ε — more powerful, fewer tests, and a better match to the actual question — or raise the seed count and reduce the number of comparisons. Decide this now, because it changes the number of runs S4 has to budget for.
+            </div>
+          </div></li>
+        </ol>
+
+        <div class="decision">
+          <span class="decision-label">Decision rule</span>
+          <dl class="branch">
+            <dt class="pass">PASS</dt>
+            <dd>Measured per-run time × final grid fits the available wall-clock with margin for reruns. Record the final grid.</dd>
+            <dt class="fail">FAIL</dt>
+            <dd>Descend the de-scoping ladder from the execution plan until it fits — drop GRU first, then the noise-injected variant. Never trade away PTB-XL or the seed count to save compute.</dd>
+          </dl>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <!-- ============ EXIT ============ -->
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">The actual deliverable</p>
+      <h2>P0 exit gate</h2>
+      <p>Write one short memo answering all of the below, and have both team members and the mentor read it. P0 is not complete because the spikes ran — it is complete because the decisions are recorded and nothing is left as "we'll figure it out later."</p>
+    </div>
+
+    <div class="gate-card">
+      <h3>The memo must state</h3>
+      <ul>
+        <li><b>S1 —</b> the measured gap distribution, whether a 12-step window is formable and at what tolerance, and which of paths A / B / C you are taking if it is not.</li>
+        <li><b>S1b —</b> whether the MIMIC credentialing application has been submitted. Recommended: submit it regardless.</li>
+        <li><b>S2 —</b> pinned versions of PyTorch, Opacus, and Flower; confirmation that DPLSTM trains under a federated round; whether ε accumulates across rounds and how you are sizing noise; and the stated unit of privacy — window or patient.</li>
+        <li><b>S2b —</b> the logits-versus-sigmoid fix applied to the model spec.</li>
+        <li><b>S3 —</b> the chosen PTB-XL mapping, the resulting input shape, the label balance, and the drafted wording of what that experiment claims.</li>
+        <li><b>S4 —</b> measured per-run wall-clock, the final grid, the total compute estimate, and the GPU-sharing plan.</li>
+        <li><b>S4b —</b> the revised statistical plan for C2, with the seed count that plan requires.</li>
+      </ul>
+      <p style="margin-top:.4rem"><b>Then, and only then, P1 begins.</b> Every one of these answers is an input to the scope lock — starting P1 without them means locking a scope built on assumptions you chose not to test.</p>
+    </div>
+  </section>
+
+  <footer>
+    Companion to the NLP-06 execution plan. Code in this guide is spike scaffolding intended to answer a question and be thrown away — none of it is production pipeline code, and none of it should survive into the repository unchanged.
+  </footer>
+
+</div>
+</body>
+</html>

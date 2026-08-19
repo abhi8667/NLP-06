@@ -1,0 +1,31 @@
+{
+  "device": "cpu",
+  "wards": 3,
+  "rounds": 6,
+  "local_epochs": 2,
+  "steps_per_epoch": 12,
+  "total_steps": 144,
+  "sample_rate": 0.08333,
+  "sigma_full_run": 2.4023,
+  "sigma_one_round": 1.4014,
+  "naive_epsilon_trace": [
+    0.7524,
+    0.7524,
+    0.7524,
+    0.7524,
+    0.7524,
+    0.7524
+  ],
+  "carried_epsilon_trace": [
+    0.7524,
+    1.0476,
+    1.2808,
+    1.4814,
+    1.661,
+    1.8255
+  ],
+  "naive_reports_flat_epsilon": true,
+  "carried_epsilon_grows": true,
+  "understatement_factor": 2.426,
+  "verdict": "TRAP CONFIRMED"
+}

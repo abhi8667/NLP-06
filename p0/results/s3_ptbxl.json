@@ -1,0 +1,22 @@
+{
+  "features": [
+    "heart_rate",
+    "rr_std",
+    "qrs_amplitude",
+    "st_level",
+    "signal_energy",
+    "lead_dispersion"
+  ],
+  "n_segments": 12,
+  "source": "synthetic demo",
+  "window_shape": [
+    12,
+    6
+  ],
+  "batch_shape": [
+    24,
+    12,
+    6
+  ],
+  "architecture_compatible": true
+}

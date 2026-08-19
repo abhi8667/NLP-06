@@ -1,0 +1,12 @@
+{
+  "device": "cpu",
+  "nn_lstm_incompatibilities": 1,
+  "dplstm_incompatibilities": 0,
+  "grad_correct": 0.001975,
+  "grad_double_sigmoid": 0.00047,
+  "grad_shrink_factor": 4.21,
+  "noise_multiplier": 0.9473,
+  "achieved_epsilon": 1.9947,
+  "train_seconds": 9.93,
+  "verdict": "PASS"
+}

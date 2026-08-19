@@ -1,0 +1,39 @@
+{
+  "device": "cuda",
+  "windows_per_ward": 4000,
+  "gpu": "NVIDIA GeForce RTX 4050 Laptop GPU",
+  "total_vram_gb": 6.0,
+  "per_model": {
+    "DPLSTM": {
+      "local_train_s": 30.59,
+      "round_s": 152.97,
+      "full_run_hours": 4.249,
+      "peak_vram_gb": 0.031
+    },
+    "DPGRU": {
+      "local_train_s": 30.52,
+      "round_s": 152.62,
+      "full_run_hours": 4.239,
+      "peak_vram_gb": 0.034
+    },
+    "CNN": {
+      "local_train_s": 4.86,
+      "round_s": 24.28,
+      "full_run_hours": 0.674,
+      "peak_vram_gb": 0.031
+    }
+  },
+  "total_runs": 150,
+  "total_hours": 529.8,
+  "sensitivity": {
+    "baseline (as planned)": 529.8,
+    "drop DPGRU (2 models)": 438.2,
+    "drop noised Synthea": 402.3,
+    "50 rounds not 100": 264.9,
+    "3 seeds not 5": 317.9,
+    "4 eps levels not 6": 353.2,
+    "half the windows/ward": 264.9,
+    "drop GRU + noised + 50 rounds": 155.4
+  },
+  "ollama_coexists": true
+}

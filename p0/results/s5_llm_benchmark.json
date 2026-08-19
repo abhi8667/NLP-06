@@ -1,0 +1,49 @@
+{
+  "baseline_vram_mib": 2932,
+  "models": {
+    "llama3.2:3b": {
+      "tokens_generated": 136,
+      "tokens_per_sec": 66.41,
+      "prompt_tokens": 311,
+      "load_seconds": 0.4,
+      "wall_seconds": 4.89,
+      "response": "Here is a concise clinical summary for the attending clinician:\n\nThe patient's vital signs indicate elevated respiratory rate (26 breaths/min, normal: 12-20) and heart rate (118 bpm, normal: 60-100), with a risk score of 0.87/1.00. Notably, the patient's history of COPD, with a history of exacerbations and current management with tiotropium inhaler, may contribute to the elevated respiratory rate. Additionally, the patient's recent post-operative day 2 note of mild breathlessness on exertion, despite being mobilized with physiotherapy, suggests a possible worsening of respiratory status.",
+      "vram_after_load_mib": 2905,
+      "vram_delta_mib": -27,
+      "vram_peak_mib": 2928,
+      "placement": "llama3.2:3b a80c4f17acd5 2.6 GB 100% GPU 4096 4 minutes from now",
+      "grounded_hits": 4,
+      "grounded_of": 8,
+      "grounded_terms": [
+        "copd",
+        "tiotropium",
+        "26",
+        "118"
+      ],
+      "possible_hallucinations": [],
+      "sentence_count": 5
+    },
+    "llama3.1:8b": {
+      "tokens_generated": 121,
+      "tokens_per_sec": 20.92,
+      "prompt_tokens": 296,
+      "load_seconds": 0.61,
+      "wall_seconds": 8.91,
+      "response": "Here is a concise clinical summary:\n\nThis patient's flagged vital signs indicate a concerning elevation in respiratory rate (26 breaths/min, +6 above normal) and heart rate (118 bpm, +18 above normal), with a corresponding decrease in oxygen saturation (91%, -3% below normal). The patient's history of COPD and recent report of mild breathlessness on exertion may contribute to these findings. Notably, the patient's respiratory rate has been steadily increasing over the past 24 hours, with a notable spike on post-operative day 2, which may indicate a developing respiratory issue.",
+      "vram_after_load_mib": 4477,
+      "vram_delta_mib": 1545,
+      "vram_peak_mib": 4505,
+      "placement": "llama3.1:8b 46e0c10c039e 5.6 GB 25%/75% CPU/GPU 4096 4 minutes from now",
+      "grounded_hits": 4,
+      "grounded_of": 8,
+      "grounded_terms": [
+        "copd",
+        "91",
+        "26",
+        "118"
+      ],
+      "possible_hallucinations": [],
+      "sentence_count": 3
+    }
+  }
+}

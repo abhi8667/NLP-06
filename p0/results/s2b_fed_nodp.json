@@ -1,0 +1,66 @@
+{
+  "device": "cpu",
+  "wards": 5,
+  "rounds": 10,
+  "ward_anomaly_rates": [
+    0.2925,
+    0.1175,
+    0.165,
+    0.3225,
+    0.1325
+  ],
+  "init_loss": 0.7576,
+  "history": [
+    {
+      "round": 1,
+      "loss": 0.3018,
+      "acc": 0.884
+    },
+    {
+      "round": 2,
+      "loss": 0.2043,
+      "acc": 1.0
+    },
+    {
+      "round": 3,
+      "loss": 0.0092,
+      "acc": 1.0
+    },
+    {
+      "round": 4,
+      "loss": 0.0042,
+      "acc": 1.0
+    },
+    {
+      "round": 5,
+      "loss": 0.0027,
+      "acc": 1.0
+    },
+    {
+      "round": 6,
+      "loss": 0.002,
+      "acc": 1.0
+    },
+    {
+      "round": 7,
+      "loss": 0.0016,
+      "acc": 1.0
+    },
+    {
+      "round": 8,
+      "loss": 0.0014,
+      "acc": 1.0
+    },
+    {
+      "round": 9,
+      "loss": 0.0013,
+      "acc": 1.0
+    },
+    {
+      "round": 10,
+      "loss": 0.0013,
+      "acc": 1.0
+    }
+  ],
+  "verdict": "PASS"
+}
