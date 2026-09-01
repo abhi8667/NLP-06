@@ -25,6 +25,7 @@ wheels/
 
 # Data
 physioNet/
+data/
 
 # Environment & IDE
 .env
@@ -33,6 +34,7 @@ Thumbs.db
 .kombai/
 .vscode/
 .idea/
+node_modules/
 
 # --- added for the shared module & P0 work ---
 synthea/
