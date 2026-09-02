@@ -32,6 +32,7 @@ LOCKED DECISIONS (see docs/02_scope_lock.html)
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -45,6 +46,7 @@ __all__ = [
     "VITALS", "WINDOW", "HORIZON", "UNUSABLE_COLUMNS",
     "load_patient", "fill_vitals", "add_news2", "make_windows",
     "patient_facts", "patient_split", "load_cohort", "ImputationReport",
+    "read_norm_stats",
 ]
 
 #: The six vitals the detector consumes, in fixed channel order.
@@ -66,23 +68,32 @@ class ImputationReport:
     """Per-vital carry-forward rates. These MUST be reported in the paper."""
     observed: dict = field(default_factory=dict)
     imputed: dict = field(default_factory=dict)
+    #: rows filled from `fallback` because the vital was NEVER observed for that
+    #: patient — a strictly weaker form of imputation than carry-forward.
+    never_observed: dict = field(default_factory=dict)
     rows: int = 0
 
     def rate(self, vital: str) -> float:
         return self.imputed.get(vital, 0) / max(self.rows, 1)
 
+    def never_observed_rate(self, vital: str) -> float:
+        return self.never_observed.get(vital, 0) / max(self.rows, 1)
+
     def summary(self) -> pd.DataFrame:
         return pd.DataFrame({
             "observed": pd.Series(self.observed),
             "imputed": pd.Series(self.imputed),
+            "never_observed": pd.Series(self.never_observed),
             "imputation_rate": pd.Series({v: self.rate(v) for v in self.observed}),
-        }).sort_values("imputation_rate")
+        }).fillna(0).sort_values("imputation_rate")
 
     def merge(self, other: "ImputationReport") -> "ImputationReport":
         out = ImputationReport(rows=self.rows + other.rows)
         for v in set(self.observed) | set(other.observed):
             out.observed[v] = self.observed.get(v, 0) + other.observed.get(v, 0)
             out.imputed[v] = self.imputed.get(v, 0) + other.imputed.get(v, 0)
+            out.never_observed[v] = (self.never_observed.get(v, 0)
+                                     + other.never_observed.get(v, 0))
         return out
 
 
@@ -94,7 +105,8 @@ def load_patient(path: str | Path) -> pd.DataFrame:
     return df
 
 
-def fill_vitals(df: pd.DataFrame, vitals: list[str] | None = None
+def fill_vitals(df: pd.DataFrame, vitals: list[str] | None = None,
+                fallback: dict[str, float] | None = None
                 ) -> tuple[pd.DataFrame, ImputationReport]:
     """
     Forward-fill then backward-fill the vitals, and report how much was imputed.
@@ -103,6 +115,22 @@ def fill_vitals(df: pd.DataFrame, vitals: list[str] | None = None
     value stands until a new one is taken. Backward-fill is needed only for the
     leading gap — the first rows of a stay are frequently blank, and ffill has
     nothing to carry from.
+
+    THE CASE NEITHER FILL CAN HANDLE
+    --------------------------------
+    Roughly 4% of patients never have a given vital measured *at all* — most
+    often glucose, occasionally SpO2 or temperature. Neither ffill nor bfill can
+    fill a column with zero observations, so those columns stay NaN and later
+    propagate silently into model inputs as NaN predictions.
+
+    Pass `fallback` (normally the frozen training-set means) to fill those
+    columns. Rows filled this way are counted separately in
+    `report.never_observed`, because substituting a cohort mean is a much weaker
+    claim than carrying a real observation forward, and the paper should report
+    the two rates separately.
+
+    Default is `None`, which preserves the original behaviour: never-observed
+    columns are left as NaN for the caller to handle.
     """
     vitals = vitals or VITALS
     out = df.copy()
@@ -114,6 +142,11 @@ def fill_vitals(df: pd.DataFrame, vitals: list[str] | None = None
         out[c] = out[c].ffill().bfill()
         rep.observed[c] = observed
         rep.imputed[c] = int(out[c].notna().sum()) - observed
+        rep.never_observed[c] = 0
+
+        if observed == 0 and fallback is not None and c in fallback:
+            out[c] = float(fallback[c])
+            rep.never_observed[c] = len(out)
     return out, rep
 
 
@@ -264,6 +297,53 @@ def patient_facts(df: pd.DataFrame, threshold: int = DEFAULT_THRESHOLD) -> dict:
         # cross-check only — NOT the training label
         facts["sepsis_crosscheck"] = bool(df["SepsisLabel"].max() > 0)
     return facts
+
+
+def read_norm_stats(path: str | Path, vitals: list[str] | None = None
+                    ) -> tuple[np.ndarray, np.ndarray, dict] | None:
+    """
+    Read per-vital normalisation stats, tolerating either on-disk schema.
+
+    Two freeze implementations have written this file with different shapes:
+
+        nested :  {"stats": {"HR": {"mean": .., "std": ..}, ...}}
+        flat   :  {"mean": {"HR": ..}, "std": {"HR": ..}}
+
+    Standardisation MUST match whatever the model was trained with, so silently
+    failing to read the file is worse than not having it — the model would
+    receive raw vitals and produce meaningless probabilities. This accepts both
+    and returns None only when neither shape is present.
+
+    Returns (mu, sd, raw_document) with `sd` guarded against division by zero.
+    """
+    vitals = vitals or VITALS
+    p = Path(path)
+    if not p.exists():
+        return None
+    try:
+        blob = json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+    means: dict = {}
+    stds: dict = {}
+    if isinstance(blob.get("stats"), dict):                 # nested schema
+        for v in vitals:
+            entry = blob["stats"].get(v) or {}
+            if "mean" in entry and "std" in entry:
+                means[v], stds[v] = entry["mean"], entry["std"]
+    elif isinstance(blob.get("mean"), dict) and isinstance(blob.get("std"), dict):
+        for v in vitals:                                    # flat schema
+            if v in blob["mean"] and v in blob["std"]:
+                means[v], stds[v] = blob["mean"][v], blob["std"][v]
+
+    if len(means) != len(vitals):
+        return None
+
+    mu = np.array([float(means[v]) for v in vitals], dtype=np.float32)
+    sd = np.array([float(stds[v]) for v in vitals], dtype=np.float32)
+    sd = np.where(np.abs(sd) < 1e-6, 1.0, sd)
+    return mu, sd, blob
 
 
 def load_cohort(folder: str | Path, limit: int | None = None,

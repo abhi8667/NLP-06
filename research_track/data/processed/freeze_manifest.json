@@ -1,0 +1,20 @@
+{
+  "window_len": 12,
+  "horizon_hours": 6,
+  "seed": 42,
+  "imputation_rates": {
+    "HR": 0.07796426637791012,
+    "SBP": 0.0977260422306443,
+    "O2Sat": 0.10341093665403357,
+    "Resp": 0.12019491066594477,
+    "Temp": 0.6599891716296697,
+    "Glucose": 0.7980508933405522
+  },
+  "file_hashes": {
+    "site_a_train.npz": "a585f26c42e27d791859750e5487d3c9d13244f3942c3a2f61b16f2352046e4a",
+    "site_a_test.npz": "a20002c9ef1bed67bd77714a74022d420cb1cb20ddd1f915db79e426ddaa061e",
+    "site_b_train.npz": "f9ef9a1083e80dc68206557ea0eda280ea7f398b9e45d848cd6efa0699963bb3",
+    "site_b_test.npz": "29237407d3d2ecd41f6f3eac1d1df1d79cf225dd3982067e9a142c21bfe4bd0a"
+  },
+  "sites": {}
+}

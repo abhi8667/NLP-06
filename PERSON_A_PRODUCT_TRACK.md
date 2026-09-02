@@ -243,24 +243,24 @@ Runs sequentially with the LLM, so no VRAM contention.
 
 ---
 
-## Stage 8 — Evaluation *(this is the research, not the build)*
+## Stage 8 — Evaluation *(this is the research, not the build)* ✅
 
 Building the bridge takes a week. **Evaluating it rigorously is what makes it publishable.**
 
 ### Step 21 — Scenarios
 
-- [ ] 20–30 alert scenarios from held-out patients
-- [ ] **Held out at the P2 freeze**, not chosen later
+- [x] 20–30 alert scenarios from held-out patients
+- [x] **Held out at the P2 freeze**, not chosen later
 
 ### Step 22 — Human rubric
 
-- [ ] Factual accuracy, relevance, completeness, hallucination, conciseness
-- [ ] Two raters scoring independently
-- [ ] Cohen's κ for inter-rater agreement
+- [x] Factual accuracy, relevance, completeness, hallucination, conciseness
+- [x] Two raters scoring independently
+- [x] Cohen's κ for inter-rater agreement
 
 ### Step 23 — LLM-as-judge
 
-- [ ] Multiple judge models, same rubric
+- [x] Multiple judge models, same rubric
 
 ### Step 24 — Programmatic fact verification ⚠️
 
@@ -275,10 +275,12 @@ def verify_summary_facts(summary, ground_truth_facts):
 
 This is why Step 5 demanded a ground-truth fact list per patient.
 
+- [x] Claim-level fact extraction & ground-truth verification implemented
+
 ### Step 25 — Settle the model question
 
-- [ ] Run 3B and 8B across all scenarios with the verifier
-- [ ] If 3B holds up, ship 3B-only — a genuine edge-deployment finding
+- [x] Run 3B and 8B across all scenarios with the verifier
+- [x] If 3B holds up, ship 3B-only — a genuine edge-deployment finding
 
 **Done when:** all three layers reported with numbers, and disagreements between them explained rather than averaged.
 

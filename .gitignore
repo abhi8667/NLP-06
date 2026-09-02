@@ -25,7 +25,7 @@ wheels/
 
 # Data
 physioNet/
-data/
+/data/
 
 # Environment & IDE
 .env

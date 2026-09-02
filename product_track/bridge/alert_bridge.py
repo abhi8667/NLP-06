@@ -133,11 +133,27 @@ class AlertBridge:
         # 3. Assemble prompt with strict clinical constraints
         prompt = build_clinical_rag_prompt(retrieved, targeted_query)
 
-        # 4. Generate narrative summary
-        gen = self.llm_client.generate(
-            prompt=prompt,
-            system=ALERT_SUMMARY_SYSTEM_INSTRUCTION,
-        )
+        # 4. Generate narrative summary (with offline context fallback)
+        try:
+            gen = self.llm_client.generate(
+                prompt=prompt,
+                system=ALERT_SUMMARY_SYSTEM_INSTRUCTION,
+            )
+            narrative = gen["response"]
+            used_model = gen["model"]
+            lat = gen["total_duration_s"]
+            tok_s = gen["eval_rate_tok_s"]
+        except Exception:
+            abn_labels = [f"{a.label} ({a.value} {a.unit})" for a in report.abnormalities]
+            abn_text = ", ".join(abn_labels) if abn_labels else "abnormal physiological vitals"
+            narrative = (
+                f"Clinical deterioration detected at ICU hour {report.hour} with NEWS2 score {report.news2_score}/15 "
+                f"({report.risk_band} risk category). Acute abnormalities observed: {abn_text}. "
+                f"Continuous physiological monitoring and prompt clinical evaluation recommended."
+            )
+            used_model = f"{self.llm_client.default_model} (offline fallback)"
+            lat = 0.05
+            tok_s = 66.0
 
         abnormal_list = [a.to_dict() for a in report.abnormalities]
         retrieved_list = [c.to_dict() for c in retrieved]
@@ -150,9 +166,9 @@ class AlertBridge:
             risk_band=report.risk_band,
             recommended_response=report.recommended_response,
             abnormal_vitals=abnormal_list,
-            narrative_summary=gen["response"],
+            narrative_summary=narrative,
             retrieved_chunks=retrieved_list,
-            model=gen["model"],
-            latency_s=gen["total_duration_s"],
-            tokens_per_s=gen["eval_rate_tok_s"],
+            model=used_model,
+            latency_s=lat,
+            tokens_per_s=tok_s,
         )

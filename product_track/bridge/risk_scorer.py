@@ -8,18 +8,12 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-try:
-    import torch
-    import torch.nn as nn
-    from opacus.layers import DPLSTM
-    HAS_TORCH = True
-except Exception:
-    torch = None  # type: ignore
-    nn = None     # type: ignore
-    DPLSTM = None # type: ignore
-    HAS_TORCH = False
+import json
 
+import numpy as np
+import torch
+
+from shared.detector import DPLSTMClassifier  # canonical — see shared/detector.py
 from shared.news2 import (
     score_hr,
     score_resp,
@@ -29,25 +23,14 @@ from shared.news2 import (
     risk_band,
     recommended_response,
 )
-from shared.preprocessing import VITALS
+from shared.preprocessing import VITALS, read_norm_stats
 
-
-class DPLSTMClassifier(nn.Module if HAS_TORCH else object):  # type: ignore
-    """
-    Standard sequence classifier using DPLSTM with raw logits output.
-    """
-
-    def __init__(self, inp: int = 6, hid: int = 64, layers: int = 2, dropout: float = 0.2):
-        if HAS_TORCH:
-            super().__init__()
-            self.rnn = DPLSTM(inp, hid, num_layers=layers, batch_first=True, dropout=dropout if layers > 1 else 0.0)
-            self.fc = nn.Linear(hid, 1)
-
-    def forward(self, x: Any) -> Any:
-        if HAS_TORCH:
-            out, _ = self.rnn(x)
-            return self.fc(out[:, -1, :])  # Logits
-        return 0.0
+# Artefacts produced by the research track. Absent on a fresh clone, in which
+# case the scorer degrades to NEWS2-only rather than failing.
+_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_CHECKPOINT = _ROOT / "data" / "checkpoints" / "dplstm_baseline.pt"
+DEFAULT_METADATA = _ROOT / "data" / "checkpoints" / "model_metadata.json"
+DEFAULT_NORM_STATS = _ROOT / "data" / "splits" / "vital_norm_stats.json"
 
 
 @dataclass
@@ -118,23 +101,77 @@ class RiskScorer:
         self,
         model_path: str | Path | None = None,
         alert_threshold_news2: int = 5,
-        alert_threshold_prob: float = 0.5,
+        alert_threshold_prob: float | None = None,
         device: str | None = None,
+        norm_stats_path: str | Path | None = None,
+        metadata_path: str | Path | None = None,
     ):
+        """
+        Loads the trained detector when the research track has produced one.
+
+        Three artefacts are picked up automatically if present:
+          * the checkpoint            -> trained weights instead of random init
+          * vital_norm_stats.json     -> the standardisation the model was trained with
+          * model_metadata.json       -> the calibrated alert threshold tau
+
+        All three are optional. Without them the scorer still runs and still
+        produces correct NEWS2 scores and abnormality reports — it simply has no
+        meaningful learned risk probability. That keeps offline tests and fresh
+        clones working.
+        """
         self.alert_threshold_news2 = alert_threshold_news2
-        self.alert_threshold_prob = alert_threshold_prob
+        self.device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
 
-        if HAS_TORCH and torch is not None:
-            self.device: Any = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
-            self.model: Any = DPLSTMClassifier().to(self.device)
-            self.model.eval()
+        self.model = DPLSTMClassifier().to(self.device)
+        self.model.eval()
 
-            if model_path and Path(model_path).exists():
-                state = torch.load(model_path, map_location=self.device)
+        # ---- trained weights ----
+        ckpt = Path(model_path) if model_path else DEFAULT_CHECKPOINT
+        self.model_loaded = False
+        if ckpt.exists():
+            try:
+                state = torch.load(ckpt, map_location=self.device)
                 self.model.load_state_dict(state)
+                self.model_loaded = True
+            except Exception:
+                self.model_loaded = False   # shape mismatch -> stay on NEWS2 only
+        self.checkpoint_path = ckpt if self.model_loaded else None
+
+        # ---- normalisation: MUST match training or the model sees garbage ----
+        stats_path = Path(norm_stats_path) if norm_stats_path else DEFAULT_NORM_STATS
+        self._mu = None
+        self._sd = None
+        parsed = read_norm_stats(stats_path, VITALS)
+        if parsed is not None:
+            self._mu, self._sd, _ = parsed
+        self.normalized = self._mu is not None
+
+        # ---- calibrated threshold ----
+        meta_path = Path(metadata_path) if metadata_path else DEFAULT_METADATA
+        tau = None
+        self.model_metadata: dict[str, Any] | None = None
+        if meta_path.exists():
+            try:
+                self.model_metadata = json.loads(meta_path.read_text(encoding="utf-8"))
+                tau = float(self.model_metadata["alert_threshold"]["threshold"])
+            except Exception:
+                tau = None
+        if alert_threshold_prob is not None:
+            self.alert_threshold_prob = float(alert_threshold_prob)
+        elif tau is not None and self.model_loaded:
+            self.alert_threshold_prob = tau
         else:
-            self.device: Any = "cpu"
-            self.model: Any = None
+            # No trained model: the probability is meaningless, so make it
+            # impossible for it to raise an alert on its own. NEWS2 still can.
+            self.alert_threshold_prob = 1.01 if not self.model_loaded else 0.5
+
+    def _standardize(self, window: np.ndarray) -> np.ndarray:
+        """Apply the training-time standardisation; guarantee finiteness."""
+        if self._mu is None or self._sd is None:
+            return np.nan_to_num(window.astype(np.float32), nan=0.0,
+                                 posinf=0.0, neginf=0.0)
+        z = (window.astype(np.float32) - self._mu) / self._sd
+        return np.nan_to_num(z, nan=0.0, posinf=0.0, neginf=0.0)
 
     def identify_abnormalities(self, current_vitals: dict[str, float]) -> list[VitalAbnormality]:
         """
@@ -264,6 +301,20 @@ class RiskScorer:
             latest_row = window[-1] if len(window) > 0 else np.zeros(len(VITALS))
             current_vitals = {v: float(latest_row[i]) for i, v in enumerate(VITALS)}
 
+        # 1. Compute neural model risk probability
+        with torch.no_grad():
+            if len(window) < 12:
+                # Pad window if stay just started
+                pad = np.zeros((12 - len(window), len(VITALS)), dtype=np.float32)
+                full_window = np.vstack([pad, window])
+            else:
+                full_window = window[-12:]
+
+            scaled = self._standardize(np.asarray(full_window, dtype=np.float32))
+            t_inp = torch.from_numpy(scaled).unsqueeze(0).to(self.device)
+            raw_logit = self.model(t_inp).item()
+            prob = float(torch.sigmoid(torch.tensor(raw_logit)).item())
+
         # 2. Compute standardized NEWS2 score for latest observation
         sub_scores = [
             score_resp(current_vitals.get("Resp", 18)),
@@ -273,27 +324,6 @@ class RiskScorer:
             score_temp(current_vitals.get("Temp", 37.0)),
         ]
         news2_total = sum(sub_scores)
-
-        # 1. Compute sequence detector risk probability
-        if HAS_TORCH and self.model is not None:
-            with torch.no_grad():
-                if len(window) < 12:
-                    # Pad window with first observation if stay just started
-                    pad = np.tile(window[0] if len(window) > 0 else np.zeros(len(VITALS)), (12 - len(window), 1))
-                    full_window = np.vstack([pad, window])
-                else:
-                    full_window = window[-12:]
-
-                t_inp = torch.tensor(full_window, dtype=torch.float32).unsqueeze(0).to(self.device)
-                raw_logit = self.model(t_inp).item()
-                if np.isnan(raw_logit):
-                    prob = float(1.0 / (1.0 + np.exp(-(news2_total - 3.5) / 1.5)))
-                else:
-                    clamped = max(min(float(raw_logit), 20.0), -20.0)
-                    prob = float(1.0 / (1.0 + np.exp(-clamped)))
-        else:
-            # Calibrated logistic probability based on NEWS2 and trajectory slope
-            prob = float(1.0 / (1.0 + np.exp(-(news2_total - 3.5) / 1.5)))
 
         # 3. Identify individual abnormal vitals
         abnormalities = self.identify_abnormalities(current_vitals)
@@ -314,3 +344,15 @@ class RiskScorer:
             is_alert=is_alert,
             abnormalities=abnormalities,
         )
+
+
+_default_scorer = None
+
+
+def identify_abnormal_vitals(current_vitals: dict[str, float]) -> list[dict[str, Any]]:
+    """Convenience helper to extract abnormal vitals as a list of dicts."""
+    global _default_scorer
+    if _default_scorer is None:
+        _default_scorer = RiskScorer()
+    abns = _default_scorer.identify_abnormalities(current_vitals)
+    return [a.to_dict() for a in abns]
