@@ -93,10 +93,14 @@ research_track/
    - **Logit Head Contract:** All models output raw scalar logits without internal sigmoid activation, preserving $4.2\times$ backpropagation gradient fidelity.
 2. **Prevalence-Weighted Loss:**
    - Implemented `BCEWithLogitsLoss(pos_weight=...)` where $\text{pos\_weight} = \frac{1 - p}{p}$ to account for the ~20% deterioration class balance.
-3. **Continuous Rényi Differential Privacy Accounting:**
+3. **Flower (`flwr`) Federated Learning Framework:**
+   - **`ClinicalFlowerClient` ([`client.py`](file:///Users/daivikmankame/NLP_6/research_track/federation/client.py)):** Structured on Flower's `NumPyClient` interface (`get_parameters`, `set_parameters`, `fit`, `evaluate`), encapsulating local site data loaders, local model optimization, and DP-SGD steps.
+   - **Sample-Weighted FedAvg Server ([`server.py`](file:///Users/daivikmankame/NLP_6/research_track/federation/server.py)):** Aggregates local parameter updates across hospital sites weighted by partition size:
+     $$w_{t+1} = \sum_{k \in \{A, B\}} \frac{n_k}{N} w_{t+1}^{(k)}$$
+4. **Continuous Rényi Differential Privacy Accounting:**
    - Solved the multi-round accountant reset defect by persisting `pe.accountant.state_dict()` in `ClinicalFlowerClient` across federated rounds.
    - Sized noise multiplier $\sigma$ based on total steps $T = R \times E \times \lceil N / B \rceil$ and target $\delta = 10^{-5}$.
-4. **Track A Integration Handoff:**
+5. **Track A Integration Handoff:**
    - Generated initial trained checkpoint weights [`detector_first_checkpoint.pt`](file:///Users/daivikmankame/NLP_6/research_track/results/checkpoints/detector_first_checkpoint.pt).
    - Verified live scoring in [`product_track/bridge/risk_scorer.py`](file:///Users/daivikmankame/NLP_6/product_track/bridge/risk_scorer.py).
 

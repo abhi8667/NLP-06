@@ -153,6 +153,57 @@ For full details and analysis, see [`TRACK_B_RESEARCH_REPORT.md`](file:///Users/
 
 ---
 
+## 🌸 Flower Federated Learning Architecture
+
+The federated learning layer is built on the **Flower (`flwr`)** paradigm, orchestrating multi-center model training across isolated clinical institutions without exchanging raw patient health records:
+
+```
+                  ┌─────────────────────────────────────────────────────────┐
+                  │                 Flower FedAvg Server                    │
+                  │   research_track/federation/server.py                   │
+                  │  • Broadcasts global weights w_t to hospital nodes      │
+                  │  • Sample-weighted parameter aggregation (FedAvg)       │
+                  │  • Evaluates global model on multi-site test partitions │
+                  └────────────────────────────┬────────────────────────────┘
+                                               │
+                       ┌───────────────────────┴───────────────────────┐
+                       │ Global Model Weights (w_t)                     │
+                       ▼                                               ▼
+        ┌─────────────────────────────┐                 ┌─────────────────────────────┐
+        │  ClinicalFlowerClient (A)   │                 │  ClinicalFlowerClient (B)   │
+        │      Hospital Site A        │                 │      Hospital Site B        │
+        ├─────────────────────────────┤                 ├─────────────────────────────┤
+        │ • 20,336 ICU stays          │                 │ • 20,000 ICU stays          │
+        │ • Opacus DP-SGD Engine      │                 │ • Opacus DP-SGD Engine      │
+        │ • Per-sample gradient clip  │                 │ • Per-sample gradient clip  │
+        │ • Calibrated Gaussian noise │                 │ • Calibrated Gaussian noise │
+        │ • Stateful RDP Accountant   │                 │ • Stateful RDP Accountant   │
+        └──────────────┬──────────────┘                 └──────────────┬──────────────┘
+                       │                                               │
+                       └───────────────────────┬───────────────────────┘
+                                               │ Local Weight Updates (Δw_A, Δw_B)
+                                               ▼
+                  ┌─────────────────────────────────────────────────────────┐
+                  │        Aggregated Global Model (w_{t+1})                │
+                  │   Saved Checkpoint: detector_first_checkpoint.pt        │
+                  └─────────────────────────────────────────────────────────┘
+```
+
+1. **Flower `NumPyClient` Contract ([`ClinicalFlowerClient`](file:///Users/daivikmankame/NLP_6/research_track/federation/client.py)):**
+   - Implements `get_parameters()`, `set_parameters()`, `fit()`, and `evaluate()`.
+   - Executes local private training epochs using `opacus.PrivacyEngine` with DP-compliant sequence models (`DPLSTM`, `DPGRU`, `CNN1D`).
+   - Maintains continuous Rényi DP accountant state across federated rounds to guarantee mathematically sound privacy accounting ($\varepsilon, \delta$).
+
+2. **Federated Coordinator ([`server.py`](file:///Users/daivikmankame/NLP_6/research_track/federation/server.py)):**
+   - Coordinates synchronous FedAvg parameter aggregation across disparate hospital sites weighted by partition size:
+     $$w_{t+1} = \sum_{k \in \{A, B\}} \frac{n_k}{N} w_{t+1}^{(k)}$$
+   - Computes multi-site global validation metrics (AUROC, AUPRC, FNR, F1) after every round.
+
+3. **Seamless Checkpoint Handoff:**
+   - The final global weights from the Flower FedAvg loop are serialized to `detector_first_checkpoint.pt`, which Track A loads into `RiskScorer` for live inference and clinician alerts.
+
+---
+
 ## 🔒 Key Design Decisions & Privacy Guarantees
 
 1. **4–6 Hour Prediction Horizon:** Slicing sliding windows at a 4–6h forward horizon prevents artificial AUROC inflation caused by autoregressive vital inertia at horizon 0.
