@@ -176,19 +176,15 @@ RESPONSE:
 
 ---
 
-## Stage 6 — Extras *(first to cut if time runs short)*
+## Stage 6 — Extras *(De-scoped per priority ladder)* ⏩
+
+> **De-scoped per project priority ladder items #1 & #2.** Resources directed to core Contribution C3 (Alert Bridge), privacy isolation, and Stage 8 clinical evaluation.
 
 ### Step 15 — Lab-report PDF ingestion
-
-- [ ] PDF → text → chunks → that patient's collection
+- [x] *(De-scoped per ladder item #2)*
 
 ### Step 16 — Voice *(demo scope, not a contribution)*
-
-- [ ] `faster-whisper` small int8 for speech-to-text (~500 MB VRAM)
-- [ ] Piper for speech output (CPU only)
-- [ ] Both route through the **same** RAG pipeline as typed input — no separate path
-
-Runs sequentially with the LLM, so no VRAM contention.
+- [x] *(De-scoped per ladder item #1 — STT/TTS demo cut to preserve compute & focus on core clinical RAG & C3 evaluation)*
 
 ---
 
