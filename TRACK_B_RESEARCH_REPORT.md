@@ -1,6 +1,6 @@
 # Track B: Privacy-Preserving Federated Clinical Deterioration Detection — Research Report
 
-**Author:** Person B (Research Track)  
+**Author:** Daivik Mankame (Research Track)  
 **Task:** Federated Differential Privacy Sequence Modeling for Early ICU Acute Deterioration Prediction  
 **Dataset:** PhysioNet/Computing in Cardiology (CinC) 2019 Sepsis & ICU Vital Telemetry (40,336 ICU stays across Site A and Site B)
 
