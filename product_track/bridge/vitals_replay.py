@@ -28,6 +28,10 @@ class HourlyTelemetry:
     window_buffer: np.ndarray  # Shape: (min(hour+1, 12), 6)
     is_last_hour: bool
 
+    @property
+    def current_vitals(self) -> dict[str, float]:
+        return self.vitals
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "patient_id": self.patient_id,

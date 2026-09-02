@@ -12,9 +12,13 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-import chromadb
-from chromadb.api import ClientAPI
-from chromadb.utils import embedding_functions
+try:
+    import chromadb
+    from chromadb.api import ClientAPI
+    from chromadb.utils import embedding_functions
+    HAS_CHROMADB = True
+except ImportError:
+    HAS_CHROMADB = False
 
 from product_track.knowledge_base import ClinicalNote, generate_patient_notes
 
@@ -89,7 +93,7 @@ def chunk_text(text: str, chunk_size: int = 1200, overlap: int = 100) -> list[st
 
 class PatientVectorStore:
     """
-    Local ChromaDB store enforcing strict patient-level isolation.
+    Local vector store enforcing strict patient-level isolation (ChromaDB or In-Memory fallback).
     """
 
     def __init__(
@@ -98,18 +102,23 @@ class PatientVectorStore:
         collection_name: str = "patient_clinical_records",
     ):
         self.persist_dir = str(persist_dir) if persist_dir else None
-        if self.persist_dir:
-            Path(self.persist_dir).mkdir(parents=True, exist_ok=True)
-            self.client: ClientAPI = chromadb.PersistentClient(path=self.persist_dir)
-        else:
-            self.client: ClientAPI = chromadb.Client()
+        self._fallback_docs: dict[str, list[dict[str, Any]]] = {}
 
-        # Local default embedding function (ONNX miniLM / fast local)
-        self.embedding_fn = embedding_functions.DefaultEmbeddingFunction()
-        self.collection = self.client.get_or_create_collection(
-            name=collection_name,
-            embedding_function=self.embedding_fn,
-        )
+        if HAS_CHROMADB:
+            if self.persist_dir:
+                Path(self.persist_dir).mkdir(parents=True, exist_ok=True)
+                self.client = chromadb.PersistentClient(path=self.persist_dir)
+            else:
+                self.client = chromadb.Client()
+
+            self.embedding_fn = embedding_functions.DefaultEmbeddingFunction()
+            self.collection = self.client.get_or_create_collection(
+                name=collection_name,
+                embedding_function=self.embedding_fn,
+            )
+        else:
+            self.client = None
+            self.collection = None
 
     def index_patient_notes(
         self,
@@ -146,11 +155,21 @@ class PatientVectorStore:
                 ids.append(doc_id)
 
         if documents:
-            self.collection.add(
-                documents=documents,
-                metadatas=metadatas,
-                ids=ids,
-            )
+            if HAS_CHROMADB and self.collection is not None:
+                self.collection.add(
+                    documents=documents,
+                    metadatas=metadatas,
+                    ids=ids,
+                )
+            else:
+                if patient_id not in self._fallback_docs:
+                    self._fallback_docs[patient_id] = []
+                for doc, meta, doc_id in zip(documents, metadatas, ids):
+                    self._fallback_docs[patient_id].append({
+                        "doc": doc,
+                        "meta": meta,
+                        "id": doc_id,
+                    })
 
         return len(documents)
 
@@ -178,47 +197,90 @@ class PatientVectorStore:
         if not patient_id or not isinstance(patient_id, str):
             raise ValueError("Query must specify a valid patient_id for scoped retrieval.")
 
-        # Query with explicit where clause
-        raw_res = self.collection.query(
-            query_texts=[query_text],
-            n_results=n_results,
-            where={"patient_id": patient_id},
-        )
+        if HAS_CHROMADB and self.collection is not None:
+            raw_res = self.collection.query(
+                query_texts=[query_text],
+                n_results=n_results,
+                where={"patient_id": patient_id},
+            )
 
-        results: list[RetrievedChunk] = []
-        docs = raw_res.get("documents", [[]])[0]
-        metas = raw_res.get("metadatas", [[]])[0]
-        ids = raw_res.get("ids", [[]])[0]
-        distances = raw_res.get("distances", [[]])[0] if raw_res.get("distances") else [None] * len(docs)
+            results: list[RetrievedChunk] = []
+            docs = raw_res.get("documents", [[]])[0]
+            metas = raw_res.get("metadatas", [[]])[0]
+            ids = raw_res.get("ids", [[]])[0]
+            distances = raw_res.get("distances", [[]])[0] if raw_res.get("distances") else [None] * len(docs)
 
-        for doc, meta, doc_id, dist in zip(docs, metas, ids, distances):
-            # Enforce hard isolation check
-            if not meta or meta.get("patient_id") != patient_id:
-                continue
+            for doc, meta, doc_id, dist in zip(docs, metas, ids, distances):
+                # Enforce hard isolation check
+                if not meta or meta.get("patient_id") != patient_id:
+                    continue
 
-            # Optional distance cutoff for strict relevance
-            if distance_threshold is not None and dist is not None and dist > distance_threshold:
-                continue
+                # Optional distance cutoff for strict relevance
+                if distance_threshold is not None and dist is not None and dist > distance_threshold:
+                    continue
 
-            results.append(RetrievedChunk(
-                content=doc,
-                patient_id=meta["patient_id"],
-                note_type=meta.get("note_type", "unknown"),
-                title=meta.get("title", ""),
-                chunk_id=doc_id,
-                distance=dist,
-            ))
+                results.append(RetrievedChunk(
+                    content=doc,
+                    patient_id=meta["patient_id"],
+                    note_type=meta.get("note_type", "unknown"),
+                    title=meta.get("title", ""),
+                    chunk_id=doc_id,
+                    distance=dist,
+                ))
 
-        return results
+            return results
+        else:
+            # Fallback in-memory patient-isolated token matching & scoring
+            patient_chunks = self._fallback_docs.get(patient_id, [])
+            if not patient_chunks:
+                return []
+
+            q_tokens = set(re.findall(r"\w+", query_text.lower()))
+            scored = []
+            for item in patient_chunks:
+                doc = item["doc"]
+                meta = item["meta"]
+                doc_id = item["id"]
+                d_tokens = set(re.findall(r"\w+", doc.lower()))
+                overlap = len(q_tokens & d_tokens)
+                score = overlap / (len(q_tokens) + 1e-5)
+                # Lower distance = higher similarity
+                dist = max(0.0, 1.0 - score)
+                scored.append((dist, doc, meta, doc_id))
+
+            scored.sort(key=lambda x: x[0])
+            top = scored[:n_results]
+
+            results = []
+            for dist, doc, meta, doc_id in top:
+                if distance_threshold is not None and dist > distance_threshold:
+                    continue
+                results.append(RetrievedChunk(
+                    content=doc,
+                    patient_id=meta["patient_id"],
+                    note_type=meta.get("note_type", "unknown"),
+                    title=meta.get("title", ""),
+                    chunk_id=doc_id,
+                    distance=round(dist, 4),
+                ))
+            return results
 
     def clear_patient(self, patient_id: str) -> None:
         """Remove all indexed chunks for a patient."""
-        try:
-            self.collection.delete(where={"patient_id": patient_id})
-        except Exception:
-            pass
+        if HAS_CHROMADB and self.collection is not None:
+            try:
+                self.collection.delete(where={"patient_id": patient_id})
+            except Exception:
+                pass
+        if patient_id in self._fallback_docs:
+            del self._fallback_docs[patient_id]
 
     def count_for_patient(self, patient_id: str) -> int:
         """Count indexed chunks for a specific patient."""
-        res = self.collection.get(where={"patient_id": patient_id})
-        return len(res.get("ids", []))
+        if HAS_CHROMADB and self.collection is not None:
+            try:
+                res = self.collection.get(where={"patient_id": patient_id})
+                return len(res.get("ids", []))
+            except Exception:
+                pass
+        return len(self._fallback_docs.get(patient_id, []))

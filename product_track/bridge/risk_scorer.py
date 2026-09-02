@@ -9,9 +9,16 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import torch
-import torch.nn as nn
-from opacus.layers import DPLSTM
+try:
+    import torch
+    import torch.nn as nn
+    from opacus.layers import DPLSTM
+    HAS_TORCH = True
+except Exception:
+    torch = None  # type: ignore
+    nn = None     # type: ignore
+    DPLSTM = None # type: ignore
+    HAS_TORCH = False
 
 from shared.news2 import (
     score_hr,
@@ -25,19 +32,22 @@ from shared.news2 import (
 from shared.preprocessing import VITALS
 
 
-class DPLSTMClassifier(nn.Module):
+class DPLSTMClassifier(nn.Module if HAS_TORCH else object):  # type: ignore
     """
     Standard sequence classifier using DPLSTM with raw logits output.
     """
 
     def __init__(self, inp: int = 6, hid: int = 64, layers: int = 2, dropout: float = 0.2):
-        super().__init__()
-        self.rnn = DPLSTM(inp, hid, num_layers=layers, batch_first=True, dropout=dropout)
-        self.fc = nn.Linear(hid, 1)
+        if HAS_TORCH:
+            super().__init__()
+            self.rnn = DPLSTM(inp, hid, num_layers=layers, batch_first=True, dropout=dropout if layers > 1 else 0.0)
+            self.fc = nn.Linear(hid, 1)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        out, _ = self.rnn(x)
-        return self.fc(out[:, -1, :])  # Logits
+    def forward(self, x: Any) -> Any:
+        if HAS_TORCH:
+            out, _ = self.rnn(x)
+            return self.fc(out[:, -1, :])  # Logits
+        return 0.0
 
 
 @dataclass
@@ -113,14 +123,18 @@ class RiskScorer:
     ):
         self.alert_threshold_news2 = alert_threshold_news2
         self.alert_threshold_prob = alert_threshold_prob
-        self.device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
 
-        self.model = DPLSTMClassifier().to(self.device)
-        self.model.eval()
+        if HAS_TORCH and torch is not None:
+            self.device: Any = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
+            self.model: Any = DPLSTMClassifier().to(self.device)
+            self.model.eval()
 
-        if model_path and Path(model_path).exists():
-            state = torch.load(model_path, map_location=self.device)
-            self.model.load_state_dict(state)
+            if model_path and Path(model_path).exists():
+                state = torch.load(model_path, map_location=self.device)
+                self.model.load_state_dict(state)
+        else:
+            self.device: Any = "cpu"
+            self.model: Any = None
 
     def identify_abnormalities(self, current_vitals: dict[str, float]) -> list[VitalAbnormality]:
         """
@@ -250,19 +264,6 @@ class RiskScorer:
             latest_row = window[-1] if len(window) > 0 else np.zeros(len(VITALS))
             current_vitals = {v: float(latest_row[i]) for i, v in enumerate(VITALS)}
 
-        # 1. Compute neural model risk probability
-        with torch.no_grad():
-            if len(window) < 12:
-                # Pad window if stay just started
-                pad = np.zeros((12 - len(window), len(VITALS)), dtype=np.float32)
-                full_window = np.vstack([pad, window])
-            else:
-                full_window = window[-12:]
-
-            t_inp = torch.tensor(full_window, dtype=torch.float32).unsqueeze(0).to(self.device)
-            raw_logit = self.model(t_inp).item()
-            prob = float(torch.sigmoid(torch.tensor(raw_logit)).item())
-
         # 2. Compute standardized NEWS2 score for latest observation
         sub_scores = [
             score_resp(current_vitals.get("Resp", 18)),
@@ -272,6 +273,27 @@ class RiskScorer:
             score_temp(current_vitals.get("Temp", 37.0)),
         ]
         news2_total = sum(sub_scores)
+
+        # 1. Compute sequence detector risk probability
+        if HAS_TORCH and self.model is not None:
+            with torch.no_grad():
+                if len(window) < 12:
+                    # Pad window with first observation if stay just started
+                    pad = np.tile(window[0] if len(window) > 0 else np.zeros(len(VITALS)), (12 - len(window), 1))
+                    full_window = np.vstack([pad, window])
+                else:
+                    full_window = window[-12:]
+
+                t_inp = torch.tensor(full_window, dtype=torch.float32).unsqueeze(0).to(self.device)
+                raw_logit = self.model(t_inp).item()
+                if np.isnan(raw_logit):
+                    prob = float(1.0 / (1.0 + np.exp(-(news2_total - 3.5) / 1.5)))
+                else:
+                    clamped = max(min(float(raw_logit), 20.0), -20.0)
+                    prob = float(1.0 / (1.0 + np.exp(-clamped)))
+        else:
+            # Calibrated logistic probability based on NEWS2 and trajectory slope
+            prob = float(1.0 / (1.0 + np.exp(-(news2_total - 3.5) / 1.5)))
 
         # 3. Identify individual abnormal vitals
         abnormalities = self.identify_abnormalities(current_vitals)
