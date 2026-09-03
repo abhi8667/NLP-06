@@ -1,0 +1,1827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WardSense — AI-Assisted Clinical Deterioration Monitoring & Federated Early Warning System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    /* ==========================================================================
+       DESIGN SYSTEM & CSS VARIABLES
+       ========================================================================== */
+    :root {
+      --bg-base: #080D12;
+      --bg-surface: #0E1620;
+      --bg-card: #131F2D;
+      --bg-card-hover: #19293C;
+      --bg-subtle: #1C2E42;
+      
+      --text-main: #F1F5F9;
+      --text-muted: #94A3B8;
+      --text-faint: #64748B;
+      
+      --teal-primary: #00D4B8;
+      --teal-soft: rgba(0, 212, 184, 0.12);
+      --teal-glow: rgba(0, 212, 184, 0.35);
+      
+      --cyan-bright: #38BDF8;
+      --cyan-soft: rgba(56, 189, 248, 0.12);
+      
+      --amber-warn: #F59E0B;
+      --amber-soft: rgba(245, 158, 11, 0.12);
+      
+      --red-crit: #EF4444;
+      --red-soft: rgba(239, 68, 68, 0.12);
+      
+      --green-ok: #10B981;
+      --green-soft: rgba(16, 185, 129, 0.12);
+      
+      --border-light: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(0, 212, 184, 0.3);
+      
+      --font-display: 'Outfit', -apple-system, sans-serif;
+      --font-body: 'Inter', -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --shadow-card: 0 8px 32px -8px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* Ambient ECG Wave Background */
+    .ambient-glow {
+      position: absolute;
+      top: -20%;
+      right: -10%;
+      width: 60vw;
+      height: 60vw;
+      background: radial-gradient(circle, rgba(0, 212, 184, 0.07) 0%, rgba(56, 189, 248, 0.02) 50%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ==========================================================================
+       TOP PROGRESS & HEADER BAR
+       ========================================================================== */
+    .top-bar {
+      height: 52px;
+      background: rgba(14, 22, 32, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-light);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 100;
+    }
+
+    .brand-pill {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-display);
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+    }
+
+    .brand-badge {
+      background: var(--teal-soft);
+      border: 1px solid var(--teal-primary);
+      color: var(--teal-primary);
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+
+    .progress-track {
+      flex: 1;
+      max-width: 480px;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 99px;
+      margin: 0 32px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 8.33%;
+      background: linear-gradient(90deg, var(--cyan-bright), var(--teal-primary));
+      border-radius: 99px;
+      transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 0 10px var(--teal-glow);
+    }
+
+    .controls-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-icon {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 0.82rem;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-icon:hover {
+      background: var(--bg-card-hover);
+      color: var(--text-main);
+      border-color: var(--teal-primary);
+    }
+
+    .btn-icon.active {
+      background: var(--teal-soft);
+      color: var(--teal-primary);
+      border-color: var(--teal-primary);
+    }
+
+    /* ==========================================================================
+       SLIDES CONTAINER & TRANSITIONS
+       ========================================================================== */
+    .deck-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 36px 72px;
+      z-index: 10;
+    }
+
+    .slide {
+      position: absolute;
+      width: min(92vw, 1320px);
+      height: min(84vh, 760px);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 44px 52px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(40px) scale(0.98);
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .slide.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(0) scale(1);
+    }
+
+    .slide.prev {
+      opacity: 0;
+      transform: translateX(-40px) scale(0.98);
+    }
+
+    /* Slide Header */
+    .slide-eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--teal-primary);
+      margin-bottom: 8px;
+    }
+
+    .slide-title {
+      font-family: var(--font-display);
+      font-size: 2.2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+      line-height: 1.15;
+      margin-bottom: 8px;
+    }
+
+    .slide-subtitle {
+      font-size: 1rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 24px;
+      max-width: 90ch;
+    }
+
+    /* Slide Content Area */
+    .slide-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    /* ==========================================================================
+       COMPONENT CARDS & GRIDS
+       ========================================================================== */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      height: 100%;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      height: 100%;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      transition: border-color 0.2s ease;
+    }
+
+    .card:hover {
+      border-color: rgba(255, 255, 255, 0.18);
+    }
+
+    .card.highlight {
+      border-color: var(--border-accent);
+      background: linear-gradient(145deg, var(--bg-card) 0%, rgba(0, 212, 184, 0.04) 100%);
+    }
+
+    .card-title {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-body {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    .card-footer {
+      margin-top: auto;
+      padding-top: 14px;
+      border-top: 1px solid var(--border-light);
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+    }
+
+    .badge-tag {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      font-weight: 600;
+    }
+
+    .tag-teal { background: var(--teal-soft); color: var(--teal-primary); border: 1px solid var(--teal-primary); }
+    .tag-amber { background: var(--amber-soft); color: var(--amber-warn); border: 1px solid var(--amber-warn); }
+    .tag-red { background: var(--red-soft); color: var(--red-crit); border: 1px solid var(--red-crit); }
+    .tag-cyan { background: var(--cyan-soft); color: var(--cyan-bright); border: 1px solid var(--cyan-bright); }
+
+    /* Tables */
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      background: var(--bg-card);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.88rem;
+    }
+
+    th {
+      background: rgba(255, 255, 255, 0.03);
+      padding: 12px 16px;
+      color: var(--text-main);
+      font-weight: 600;
+      font-family: var(--font-display);
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    td {
+      padding: 12px 16px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr.highlight-row {
+      background: rgba(0, 212, 184, 0.06);
+    }
+
+    tr.highlight-row td {
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
+    /* Stat Callout */
+    .stat-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      text-align: center;
+    }
+
+    .stat-val {
+      font-family: var(--font-display);
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--teal-primary);
+      line-height: 1.1;
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Code & Pipeline SVGs */
+    .pipeline-diagram {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      padding: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .pipeline-node {
+      flex: 1;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      text-align: center;
+      position: relative;
+    }
+
+    .pipeline-node.accent {
+      border-color: var(--teal-primary);
+      background: var(--teal-soft);
+    }
+
+    .pipeline-node .node-title {
+      font-family: var(--font-display);
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .pipeline-node .node-sub {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    .pipeline-arrow {
+      color: var(--text-faint);
+      font-size: 1.2rem;
+    }
+
+    /* ==========================================================================
+       BOTTOM BAR & SPEAKER NOTES DRAWER
+       ========================================================================== */
+    .bottom-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 54px;
+      background: rgba(14, 22, 32, 0.95);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid var(--border-light);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      z-index: 100;
+    }
+
+    .slide-counter {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .slide-counter span {
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    .nav-buttons {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-nav {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      color: var(--text-main);
+      padding: 8px 18px;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-display);
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-nav:hover {
+      background: var(--teal-primary);
+      color: var(--bg-base);
+      border-color: var(--teal-primary);
+    }
+
+    /* Speaker Notes Modal / Drawer */
+    .notes-drawer {
+      position: fixed;
+      bottom: 54px;
+      left: 0;
+      right: 0;
+      max-height: 240px;
+      background: rgba(11, 19, 27, 0.98);
+      border-top: 2px solid var(--teal-primary);
+      backdrop-filter: blur(16px);
+      padding: 20px 36px;
+      box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.6);
+      transform: translateY(110%);
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 90;
+      overflow-y: auto;
+    }
+
+    .notes-drawer.open {
+      transform: translateY(0);
+    }
+
+    .notes-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      border-bottom: 1px solid var(--border-light);
+      padding-bottom: 6px;
+    }
+
+    .notes-title {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--teal-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .notes-body {
+      font-family: var(--font-body);
+      font-size: 0.92rem;
+      color: var(--text-main);
+      line-height: 1.6;
+    }
+
+    .notes-body strong {
+      color: var(--cyan-bright);
+    }
+
+    /* Jump to Slide Menu */
+    .toc-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .toc-modal.open {
+      display: flex;
+    }
+
+    .toc-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      width: min(90vw, 760px);
+      max-height: 80vh;
+      overflow-y: auto;
+      padding: 32px;
+      box-shadow: var(--shadow-card);
+    }
+
+    .toc-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .toc-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .toc-item:hover {
+      border-color: var(--teal-primary);
+      background: var(--bg-card-hover);
+    }
+
+    .toc-num {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--teal-primary);
+      font-weight: 700;
+    }
+
+    .toc-text {
+      font-size: 0.88rem;
+      color: var(--text-main);
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="ambient-glow"></div>
+
+  <!-- TOP APP BAR -->
+  <header class="top-bar">
+    <div class="brand-pill">
+      <span>🏥 WardSense</span>
+      <span class="brand-badge">NLP-06 CLINICAL AI</span>
+      <span style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); margin-left: 8px;">Dual-Track System Deck</span>
+    </div>
+
+    <div class="progress-track" title="Presentation Progress">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+
+    <div class="controls-group">
+      <button class="btn-icon" id="btnToc" title="Slide Overview (M)">
+        <span>☰</span> Jump To
+      </button>
+      <button class="btn-icon" id="btnNotes" title="Toggle Presenter Script (S)">
+        <span>🎙️</span> Notes
+      </button>
+      <button class="btn-icon" id="btnFullscreen" title="Toggle Fullscreen (F)">
+        <span>⛶</span> Fullscreen
+      </button>
+    </div>
+  </header>
+
+  <!-- PRESENTATION SLIDE DECK -->
+  <main class="deck-container">
+
+    <!-- ==========================================================================
+         SLIDE 1: TITLE & HERO
+         ========================================================================== -->
+    <section class="slide active" id="slide-0" data-title="System Overview & Title">
+      <div class="slide-eyebrow">
+        <span>●</span> RESEARCH TRACK & CLINICIAN WORKSTATION
+      </div>
+      <h1 class="slide-title">WardSense: Federated Early Warning & Clinical AI Workstation</h1>
+      <p class="slide-subtitle">
+        An end-to-end privacy-preserving system for ICU acute physiological deterioration monitoring: combining <strong>Federated Learning with Differential Privacy</strong> (Track B) and a <strong>Real-Time Clinician Workstation with Local RAG & Fact Verification</strong> (Track A).
+      </p>
+
+      <div class="slide-body">
+        <div class="grid-3" style="margin-bottom: 24px;">
+          <div class="stat-box">
+            <div class="stat-val">40,336</div>
+            <div class="stat-label">Real ICU Stays (PhysioNet 2019)</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-val">0.898</div>
+            <div class="stat-label">Headline AUROC (&epsilon; = 2.0)</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-val">86.4%</div>
+            <div class="stat-label">Deterioration Detection (&epsilon; = 1.0)</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card highlight">
+            <div class="card-title">
+              <span class="badge-tag tag-teal">TRACK B</span> Research Engine
+            </div>
+            <div class="card-body">
+              <strong>Federated Differential Privacy Sequence ML:</strong> 12-hour sliding vitals window forecasting 4–6h ahead. Trained across 2 independent hospital silos via Flower FedAvg and Opacus DP-SGD with stateful Rényi DP accounting.
+            </div>
+          </div>
+          <div class="card highlight">
+            <div class="card-title">
+              <span class="badge-tag tag-cyan">TRACK A</span> Clinician Workstation
+            </div>
+            <div class="card-body">
+              <strong>Bedside Decision Support & Grounded RAG:</strong> Real-time NEWS2 telemetry replay, alert triggering, ChromaDB per-patient isolated retrieval, and local quantized Llama-3 inference with Stage 6 factual verification.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="speaker-notes">
+        <strong>Opening Pitch (45s):</strong> "Good morning. Every year, thousands of ICU patients experience preventable cardiac arrest and septic shock because physiological decline is caught hours too late. Hospitals cannot pool patient vitals into the cloud due to HIPAA and GDPR. Our project, WardSense, bridges mathematical privacy theory and real-time bedside decision support. In Track B, we train a sequence model across decentralized hospital silos with Differential Privacy. In Track A, our detector's alerts trigger an automated, grounded clinical escalation brief using local RAG."
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         SLIDE 2: THE CLINICAL PROBLEM
+         ========================================================================== -->
+    <section class="slide" id="slide-1" data-title="Clinical Motivation & Dilemma">
+      <div class="slide-eyebrow">
+        <span>●</span> CLINICAL MOTIVATION & DILEMMA
+      </div>
+      <h2 class="slide-title">The Dual Challenge: Silent Decline vs. Data Silos</h2>
+      <p class="slide-subtitle">Why traditional clinical early warning scoring and cloud AI architectures fail in acute care.</p>
+
+      <div class="slide-body">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title" style="color: var(--amber-warn);">
+              <span>⚠️</span> The Bedside Crisis
+            </div>
+            <div class="card-body">
+              <ul style="padding-left: 20px; display: flex; flex-direction: column; gap: 12px;">
+                <li><strong>Silent Physiological Drift:</strong> Deterioration develops over 4–12 hours through subtle cross-vital covariance (elevating heart rate, dropping blood pressure) before acute collapse.</li>
+                <li><strong>NEWS2 Threshold Limitations:</strong> Static rule-based scoring (NEWS2 &ge; 5) creates severe alert fatigue with high false alarm rates.</li>
+                <li><strong>Zero Forecasting Lead-Time:</strong> Scoring current vitals only flags deterioration when it is already happening, leaving zero time for prophylactic fluid resuscitation.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title" style="color: var(--red-crit);">
+              <span>🔒</span> The Privacy & Governance Roadblock
+            </div>
+            <div class="card-body">
+              <ul style="padding-left: 20px; display: flex; flex-direction: column; gap: 12px;">
+                <li><strong>Strict Data Silos (HIPAA / GDPR):</strong> Patient telemetry cannot be pooled into centralized cloud servers or vendor databases.</li>
+                <li><strong>Gradient Reconstruction Attacks:</strong> Standard deep learning models inadvertently memorize individual patient outliers during backprop.</li>
+                <li><strong>Cold Risk Scores are Unusable:</strong> Handing a nurse an alert probability of <code>0.82</code> does not explain <em>why</em> the patient is deteriorating or what interventions are needed.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="speaker-notes">
+        <strong>Talking Points (60s):</strong> "Patient deterioration is almost never sudden; it is preceded by hours of subtle multi-vital drift. Standard scoring tools like NHS NEWS2 trigger massive alert fatigue and only react when collapse has already begun. Machine learning can forecast hours ahead, but regulations forbid pooling ICU records. Furthermore, giving a doctor an unexplained risk score of 0.82 is clinically useless. We need early forecasting, mathematical privacy guarantees, and verifiable natural language explanations."
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         SLIDE 3: RELATED WORK & 5 BASE PAPERS
+         ========================================================================== -->
+    <section class="slide" id="slide-2" data-title="Related Work & 5 Base Papers">
+      <div class="slide-eyebrow">
+        <span>●</span> GROUNDING IN PEER-REVIEWED LITERATURE
+      </div>
+      <h2 class="slide-title">Five Base Papers Across Two Isolated Families</h2>
+      <p class="slide-subtitle">Current research splits cleanly into privacy methods without temporal data, and language models without privacy.</p>
+
+      <div class="slide-body">
+        <div class="grid-2">
+          <!-- Family 1 -->
+          <div class="card">
+            <div class="card-title">
+              <span class="badge-tag tag-teal">FAMILY 1</span> Privacy & Federated Learning
+            </div>
+            <div class="card-body" style="display: flex; flex-direction: column; gap: 10px;">
+              <div>
+                <strong>b1: Shukla et al. (2025, <em>Sci Rep</em>):</strong> FL + DP on 569 breast cancer records (&epsilon; = 1.9). Static tabular data only, no time dimension, basic composition accounting.
+              </div>
+              <div>
+                <strong>b2: Tanveer et al. (2025, <em>Digital Health</em>):</strong> Flower FL + Rényi DP on 5,000 stroke records (&epsilon; &approx; 0.69). Static tabular data, zero temporal sequence modeling, no LLM.
+              </div>
+              <div>
+                <strong>b3: Mosaiyebzadeh et al. (2025, <em>Electronics</em>):</strong> SECIoHT-FL. Compared DNN vs CNN under Opacus DP-SGD. Tested only 2 noise points on network intrusion data, not clinical vitals.
+              </div>
+            </div>
+          </div>
+
+          <!-- Family 2 -->
+          <div class="card">
+            <div class="card-title">
+              <span class="badge-tag tag-cyan">FAMILY 2</span> Clinical Language Models & RAG
+            </div>
+            <div class="card-body" style="display: flex; flex-direction: column; gap: 14px;">
+              <div>
+                <strong>b4: Wada et al. (2025, <em>npj Digit Med</em>):</strong> Local Llama RAG for radiology contrast consultation. Landmark result: <em>retrieval dropped hallucinations from 8% to 0%</em>. One-shot consultation chatbot; no vitals, no privacy.
+              </div>
+              <div>
+                <strong>b5: Miao et al. (<em>JMIR Scoping Review</em>):</strong> Comprehensive review of 67 medical LLM retrieval studies.
+                <div style="background: rgba(0,212,184,0.06); padding: 10px; border-radius: 6px; margin-top: 8px; border-left: 3px solid var(--teal-primary);">
+                  <em>"None of the 67 reviewed studies integrate real-time telemetry with retrieval-augmented generation. 94% target physicians, only 6% target nursing."</em>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="speaker-notes">
+        <strong>Talking Points (60s):</strong> "We organized our related work into two families. Papers b1 through b3 do federated learning and differential privacy well, but strictly on static tabular rows or network traffic. Papers b4 and b5 do clinical language models well — Wada showed RAG drops hallucinations from 8% to 0%. But b5 reviewed 67 medical LLM papers and found that zero studies integrate real-time telemetry with RAG. That single quote from Miao et al. proves our research gap is real."
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         SLIDE 4: THE GAP MATRIX TABLE
+         ========================================================================== -->
+    <section class="slide" id="slide-3" data-title="The Research Gap Matrix">
+      <div class="slide-eyebrow">
+        <span>●</span> SYSTEM COMPARISON MATRIX
+      </div>
+      <h2 class="slide-title">The Literature Gap Matrix</h2>
+      <p class="slide-subtitle">Visualizing the capabilities that exist across related literature versus WardSense.</p>
+
+      <div class="slide-body">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Capability / Feature</th>
+                <th>b1 (Shukla '25)</th>
+                <th>b2 (Tanveer '25)</th>
+                <th>b3 (Mosaiyeb '25)</th>
+                <th>b4 (Wada '25)</th>
+                <th>b5 (Miao Review)</th>
+                <th style="color: var(--teal-primary);">WardSense (Ours)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Continuous ICU Vitals Stream</td>
+                <td><span class="badge-tag tag-red">❌ Static (1 Row)</span></td>
+                <td><span class="badge-tag tag-red">❌ Static (1 Row)</span></td>
+                <td><span class="badge-tag tag-red">❌ Net Packets</span></td>
+                <td><span class="badge-tag tag-red">❌ Static Notes</span></td>
+                <td><span class="badge-tag tag-red">❌ 0 of 67 studies</span></td>
+                <td><span class="badge-tag tag-teal">✅ 12h Rolling (6 Vitals)</span></td>
+              </tr>
+              <tr>
+                <td>Early Horizon Prediction</td>
+                <td><span class="badge-tag tag-red">❌ None</span></td>
+                <td><span class="badge-tag tag-red">❌ None</span></td>
+                <td><span class="badge-tag tag-red">❌ None</span></td>
+                <td><span class="badge-tag tag-red">❌ None</span></td>
+                <td><span class="badge-tag tag-red">❌ None</span></td>
+                <td><span class="badge-tag tag-teal">✅ 4–6 Hour Horizon</span></td>
+              </tr>
+              <tr>
+                <td>Multi-Center Federation</td>
+                <td><span class="badge-tag tag-teal">✅ Yes</span></td>
+                <td><span class="badge-tag tag-teal">✅ Flower FedAvg</span></td>
+                <td><span class="badge-tag tag-teal">✅ Yes</span></td>
+                <td><span class="badge-tag tag-red">❌ Centralized</span></td>
+                <td><span class="badge-tag tag-red">❌ Centralized</span></td>
+                <td><span class="badge-tag tag-teal">✅ Flower 2-Site FedAvg</span></td>
+              </tr>
+              <tr>
+                <td>Differential Privacy (DP-SGD)</td>
+                <td><span class="badge-tag tag-amber">⚠️ Basic Acct</span></td>
+                <td><span class="badge-tag tag-teal">✅ Rényi DP</span></td>
+                <td><span class="badge-tag tag-amber">⚠️ 2 Points</span></td>
+                <td><span class="badge-tag tag-red">❌ None</span></td>
+                <td><span class="badge-tag tag-red">❌ None</span></td>
+                <td><span class="badge-tag tag-teal">✅ Opacus Continuous RDP</span></td>
+              </tr>
+              <tr>
+                <td>Grounded Clinical RAG</td>
+                <td><span class="badge-tag tag-red">❌ None</span></td>
+                <td><span class="badge-tag tag-red">❌ None</span></td>
+                <td><span class="badge-tag tag-red">❌ None</span></td>
+                <td><span class="badge-tag tag-teal">✅ Radiology RAG</span></td>
+                <td><span class="badge-tag tag-teal">✅ 67 Papers</span></td>
+                <td><span class="badge-tag tag-teal">✅ Patient-Isolated RAG</span></td>
+              </tr>
+              <tr class="highlight-row">
+                <td>Alert-to-Summary Bridge</td>
+                <td><span class="badge-tag tag-red">❌ None</span></td>
+                <td><span class="badge-tag tag-red">❌ None</span></td>
+                <td><span class="badge-tag tag-red">❌ None</span></td>
+                <td><span class="badge-tag tag-red">❌ None</span></td>
+                <td><span class="badge-tag tag-red">❌ None</span></td>
+                <td><span class="badge-tag tag-teal">⭐ Contribution C3</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="speaker-notes">
+        <strong>Talking Points (60s):</strong> "Pause here and look at this matrix. b1 through b3 are solid on federated privacy, but have zero language generation or continuous telemetry. b4 and b5 have RAG, but zero privacy and zero telemetry. Nobody has a column that is green all the way down — except WardSense. That is our core novelty: bridging privacy-preserving continuous telemetry ML with grounded clinical summarization."
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         SLIDE 5: FOUR CORE CONTRIBUTIONS
+         ========================================================================== -->
+    <section class="slide" id="slide-4" data-title="Four Core Contributions">
+      <div class="slide-eyebrow">
+        <span>●</span> RESEARCH & PRODUCT ADVANCEMENTS
+      </div>
+      <h2 class="slide-title">Our Four Contributions (C1 to C4)</h2>
+      <p class="slide-subtitle">Four distinct technical achievements mapping directly onto the identified gap.</p>
+
+      <div class="slide-body">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">
+              <span class="badge-tag tag-teal">C1</span> Privacy-Utility Boundary on Vitals
+            </div>
+            <div class="card-body">
+              <strong>Measuring the Clinical Breakdown Point:</strong> First systematic sweep across privacy budgets (&epsilon; &isin; {0.5, 1.0, 2.0, 4.0, 8.0, &infin;}) on continuous physiological sequences, proving that clinical early warning survives under provable differential privacy.
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">
+              <span class="badge-tag tag-cyan">C2</span> Architecture Robustness under DP Noise
+            </div>
+            <div class="card-body">
+              <strong>Sequence Models vs. 1D-CNNs:</strong> Empirical benchmark showing that recurrent models (DPLSTM, DPGRU) retain predictive capability under DP Gaussian gradient perturbation significantly better than convolutional networks.
+            </div>
+          </div>
+
+          <div class="card highlight">
+            <div class="card-title">
+              <span class="badge-tag tag-teal">C3</span> The Alert-to-Summary Bridge
+            </div>
+            <div class="card-body">
+              <strong>Our Primary Architectural Novelty:</strong> The federated anomaly detector's alert automatically becomes the retrieval query into that patient's private ChromaDB record, prompting a local Llama-3 model to generate an escalation brief.
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">
+              <span class="badge-tag tag-amber">C4</span> Rigorous Continuous Rényi DP
+            </div>
+            <div class="card-body">
+              <strong>Tight Composition Accounting:</strong> Utilizing stateful Opacus Rényi Differential Privacy (RDP) accountants across all 60 federated epochs, providing strict mathematical privacy guarantees compared to weak naive composition.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="speaker-notes">
+        <strong>Talking Points (60s):</strong> "Four contributions map to that gap. C1 establishes where privacy noise breaks clinical utility for ICU time-series. C2 proves that recurrent gates in LSTMs act as natural low-pass filters that tolerate DP noise better than CNNs. C3 is our prime novelty: connecting a private detector's alert into a patient-isolated RAG pipeline to generate a verified escalation brief. And C4 is empirical rigor: continuous Rényi accounting across all 60 federated epochs."
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         SLIDE 6: DUAL-TRACK ARCHITECTURE
+         ========================================================================== -->
+    <section class="slide" id="slide-5" data-title="Dual-Track System Architecture">
+      <div class="slide-eyebrow">
+        <span>●</span> SYSTEM ARCHITECTURE
+      </div>
+      <h2 class="slide-title">Dual-Track Architecture & The Bridge Contract</h2>
+      <p class="slide-subtitle">Clear architectural separation: Track B trains the detector; Track A delivers the workstation.</p>
+
+      <div class="slide-body">
+        <div class="pipeline-diagram">
+          <div class="pipeline-node">
+            <div class="node-title">Hospital Site A & B</div>
+            <div class="node-sub">20,336 + 20,000 stays</div>
+          </div>
+          <div class="pipeline-arrow">➔</div>
+          <div class="pipeline-node">
+            <div class="node-title">Track B: Federated Engine</div>
+            <div class="node-sub">Flower + Opacus DP-SGD</div>
+          </div>
+          <div class="pipeline-arrow">➔</div>
+          <div class="pipeline-node accent">
+            <div class="node-title">Checkpoint Handoff</div>
+            <div class="node-sub">detector_first_checkpoint.pt</div>
+          </div>
+          <div class="pipeline-arrow">➔</div>
+          <div class="pipeline-node">
+            <div class="node-title">Track A: WardSense UI</div>
+            <div class="node-sub">Replay, NEWS2, Vector RAG</div>
+          </div>
+          <div class="pipeline-arrow">➔</div>
+          <div class="pipeline-node">
+            <div class="node-title">Clinician Review</div>
+            <div class="node-sub">Verified Escalation Card</div>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>System Dimension</th>
+                <th>Detector (Track B — Research)</th>
+                <th>Clinician Workstation (Track A — Product)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Model Type</td>
+                <td>Small PyTorch Sequence Classifier (~100K params)</td>
+                <td>Local Quantized LLM (Llama 3.2 3B / 3.1 8B) + ChromaDB</td>
+              </tr>
+              <tr>
+                <td>Input Data</td>
+                <td>12 hours &times; 6 physiological vitals</td>
+                <td>Clinician Query + Patient's Isolated Admission History</td>
+              </tr>
+              <tr>
+                <td>Primary Output</td>
+                <td>Calibrated Deterioration Probability Logits</td>
+                <td>Structured Clinical Escalation Brief & Evidence Citations</td>
+              </tr>
+              <tr>
+                <td>Training Paradigm</td>
+                <td>Decentralized Federated Learning with DP-SGD</td>
+                <td>Pre-trained, Frozen Weights with RAG Grounding</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="speaker-notes">
+        <strong>Talking Points (60s):</strong> "To avoid architectural confusion, we enforce a strict separation of concerns. Track B is the research track: it trains the lightweight sequence detector (~100K parameters) across hospitals without moving data. Track A is the product track: it loads the trained checkpoint into the WardSense workstation alongside a frozen local Llama-3 model. Federating a whole LLM across hospital workstations is computationally unfeasible; federating the sequence detector and keeping the LLM local is practical and effective."
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         SLIDE 7: DATASET & 4-6h HORIZON
+         ========================================================================== -->
+    <section class="slide" id="slide-6" data-title="Dataset & 4-6h Horizon">
+      <div class="slide-eyebrow">
+        <span>●</span> DATASET & TASK FORMULATION
+      </div>
+      <h2 class="slide-title">PhysioNet 2019: 40,336 Real ICU Stays</h2>
+      <p class="slide-subtitle">Zero data leakage, authentic imputation accounting, and 4–6 hour deterioration forecasting.</p>
+
+      <div class="slide-body">
+        <div class="grid-3">
+          <div class="card">
+            <div class="card-title">
+              <span class="badge-tag tag-teal">PARTITION</span> Patient-Level Splits
+            </div>
+            <div class="card-body">
+              <ul style="padding-left: 18px; display: flex; flex-direction: column; gap: 8px;">
+                <li><strong>Strict ID Splitting:</strong> 80/20 train/test split strictly by patient ID, never by window. Zero leakage.</li>
+                <li><strong>Two Hospital Silos:</strong> Site A (20,336 ICU stays) and Site B (20,000 ICU stays).</li>
+                <li><strong>Cryptographic Freeze:</strong> SHA-256 manifest locks all numpy arrays before training.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">
+              <span class="badge-tag tag-cyan">WINDOW</span> 12h Stream + 4–6h Horizon
+            </div>
+            <div class="card-body">
+              <ul style="padding-left: 18px; display: flex; flex-direction: column; gap: 8px;">
+                <li><strong>Input Tensor:</strong> $X \in \mathbb{R}^{12 \times 6}$ (HR, SBP, O2Sat, Resp, Temp, Glucose).</li>
+                <li><strong>Target Formulation:</strong> $\max(\text{NEWS2}_{t+4 \dots t+6}) \ge 5$.</li>
+                <li><strong>Why 4–6 Hours:</strong> Predicting $t=0$ is trivial autocorrelation. Forecasting 4–6h ahead gives clinicians actionable intervention lead-time.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">
+              <span class="badge-tag tag-amber">RIGOR</span> Documented Imputation
+            </div>
+            <div class="card-body">
+              <ul style="padding-left: 18px; display: flex; flex-direction: column; gap: 8px;">
+                <li><strong>Forward-Fill with Report:</strong> Forward then backward-fill. We explicitly measure missingness:</li>
+                <li><code>HR: 9.9%</code> | <code>O2Sat: 12.8%</code></li>
+                <li><code>SBP: 15.2%</code> | <code>Resp: 15.8%</code></li>
+                <li><code>Temp: 66.8%</code> | <code>Glucose: 83.2%</code></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="speaker-notes">
+        <strong>Talking Points (60s):</strong> "We use PhysioNet 2019 — 40,336 real ICU patients across two hospital systems. We rejected Synthea because synthetic vitals lacked continuous hourly timestamps and missed temperature and oxygen data. We enforce patient-level splitting — no sliding windows overlap between train and test. Notice our prediction horizon: we forecast the maximum NEWS2 score 4 to 6 hours into the future. Predicting zero hours ahead is trivial because the label is derived from the vitals you're looking at; 4 to 6 hours is the clinically meaningful problem."
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         SLIDE 8: TRACK B EMPIRICAL RESULTS
+         ========================================================================== -->
+    <section class="slide" id="slide-7" data-title="Track B 60-Epoch Results">
+      <div class="slide-eyebrow">
+        <span>●</span> RESEARCH RESULTS (60 EPOCHS)
+      </div>
+      <h2 class="slide-title">Empirical Benchmark: Accuracy vs. Privacy (&epsilon;)</h2>
+      <p class="slide-subtitle">Evaluation across 60 federated epochs proving high predictive utility under strict DP budgets.</p>
+
+      <div class="slide-body">
+        <div class="table-container" style="margin-bottom: 20px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Architecture</th>
+                <th>Privacy Budget (&epsilon;)</th>
+                <th>AUPRC</th>
+                <th>AUROC</th>
+                <th>Missed Det. (FNR)</th>
+                <th>F1-Score</th>
+                <th>Clinical Detection Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="highlight-row">
+                <td><strong>DPLSTM</strong></td>
+                <td><strong>&epsilon; = 2.0</strong></td>
+                <td><strong>0.725</strong></td>
+                <td><strong>0.898</strong></td>
+                <td>1.000</td>
+                <td>0.000</td>
+                <td>(Standard &tau; = 0.5)</td>
+              </tr>
+              <tr class="highlight-row">
+                <td><strong>DPLSTM</strong></td>
+                <td><strong>&epsilon; = 1.0</strong></td>
+                <td><strong>0.719</strong></td>
+                <td><strong>0.885</strong></td>
+                <td><strong>0.136</strong></td>
+                <td><strong>0.808</strong></td>
+                <td><strong>86.4% Early Detection</strong></td>
+              </tr>
+              <tr>
+                <td><strong>DPLSTM</strong></td>
+                <td>&epsilon; = 0.5</td>
+                <td>0.620</td>
+                <td>0.878</td>
+                <td><strong>0.136</strong></td>
+                <td>0.613</td>
+                <td><strong>86.4% Early Detection</strong></td>
+              </tr>
+              <tr>
+                <td><strong>DPLSTM</strong></td>
+                <td>&infin; (Non-DP)</td>
+                <td>0.509</td>
+                <td>0.824</td>
+                <td>0.409</td>
+                <td>0.433</td>
+                <td>59.1% Early Detection</td>
+              </tr>
+              <tr>
+                <td><strong>DPGRU</strong></td>
+                <td>&epsilon; = 8.0</td>
+                <td>0.622</td>
+                <td>0.875</td>
+                <td>0.273</td>
+                <td>0.660</td>
+                <td>72.7% Early Detection</td>
+              </tr>
+              <tr>
+                <td><strong>DPGRU</strong></td>
+                <td>&infin; (Non-DP)</td>
+                <td>0.550</td>
+                <td>0.880</td>
+                <td>0.227</td>
+                <td>0.544</td>
+                <td>77.3% Early Detection</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid-3">
+          <div class="stat-box">
+            <div class="stat-val">0.725</div>
+            <div class="stat-label">Peak AUPRC (&epsilon; = 2.0)</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-val">13.6%</div>
+            <div class="stat-label">Lowest False Negative Rate</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-val">0.808</div>
+            <div class="stat-label">Peak Clinical F1 (&epsilon; = 1.0)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="speaker-notes">
+        <strong>Talking Points (60s):</strong> "Here are our headline results from the 60-epoch sweep. DPLSTM at epsilon 2.0 achieves an AUPRC of 0.725 and AUROC of 0.898 — over 3.6 times higher than random deterioration prevalence. Even more compelling: at epsilon 1.0, widely considered the gold standard in privacy research, false negatives drop to 13.6%, detecting 86.4% of deteriorating patients with an F1 score of 0.808. This proves that provable differential privacy does not require sacrificing early warning utility."
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         SLIDE 9: WHY SEQUENCE MODELS WIN
+         ========================================================================== -->
+    <section class="slide" id="slide-8" data-title="Why Sequence Models Win">
+      <div class="slide-eyebrow">
+        <span>●</span> RESEARCH INSIGHT (CONTRIBUTION C2)
+      </div>
+      <h2 class="slide-title">Why Recurrent Models Tolerate Privacy Noise</h2>
+      <p class="slide-subtitle">Recurrent gating acts as an intrinsic low-pass filter against Opacus DP-SGD gradient noise.</p>
+
+      <div class="slide-body">
+        <div class="grid-2">
+          <div class="card highlight">
+            <div class="card-title" style="color: var(--teal-primary);">
+              <span>⚡</span> DPLSTM & DPGRU (Recurrent)
+            </div>
+            <div class="card-body">
+              <ul style="padding-left: 20px; display: flex; flex-direction: column; gap: 12px;">
+                <li><strong>Temporal State Persistence:</strong> Hidden and cell states preserve macro trend directions across timesteps.</li>
+                <li><strong>Low-Pass Noise Filtering:</strong> Forget and reset gates naturally attenuate high-frequency Gaussian gradient perturbation injected during DP-SGD.</li>
+                <li><strong>GroupNorm Stabilization:</strong> Replacing BatchNorm with GroupNorm prevents cross-sample information leakage while maintaining recurrent convergence.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title" style="color: var(--amber-warn);">
+              <span>📉</span> CNN1D (Convolutional)
+            </div>
+            <div class="card-body">
+              <ul style="padding-left: 20px; display: flex; flex-direction: column; gap: 12px;">
+                <li><strong>Fragile Local Receptive Fields:</strong> 1D convolutional kernels operate across fixed temporal patches without recurrent memory.</li>
+                <li><strong>Gradient Noise Vulnerability:</strong> Adding Gaussian noise directly disrupts localized kernel activations, causing steeper accuracy decay under &epsilon; &le; 2.0.</li>
+                <li><strong>Confirmed Hypothesis:</strong> Confirms Contribution C2 — sequential recurrence is superior for private clinical time-series.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="speaker-notes">
+        <strong>Talking Points (45s):</strong> "Why do LSTM and GRU beat CNNs under differential privacy? In DP-SGD, we clip gradients and inject Gaussian noise. Recurrent networks have forget and reset gates that accumulate state over 12 hours, acting like low-pass filters that smooth out that perturbation. Convolutional kernels have rigid local receptive fields — noise directly warps their feature detectors. This directly validates our Contribution C2."
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         SLIDE 10: RESEARCH TRACK CONCLUSION
+         ========================================================================== -->
+    <section class="slide" id="slide-9" data-title="Research Track: Conclusion">
+      <div class="slide-eyebrow">
+        <span>●</span> TRACK B &mdash; WHAT THE RESEARCH ESTABLISHED
+      </div>
+      <h2 class="slide-title">Research Track Conclusion</h2>
+      <p class="slide-subtitle">Four findings from the 60-epoch federated sweep, and the two limits we are explicit about.</p>
+
+      <div class="slide-body">
+        <div class="grid-2" style="margin-bottom: 18px;">
+          <div class="card highlight">
+            <div class="card-title" style="color: var(--teal-primary);">
+              <span class="badge-tag tag-teal">FINDING 1</span> Privacy is affordable here
+            </div>
+            <div class="card-body" style="font-size: 0.82rem;">
+              At the gold-standard budget <strong>&epsilon; = 1.0</strong>, DPLSTM reaches <strong>0.885 AUROC</strong> / <strong>0.719 AUPRC</strong>, catching <strong>86.4%</strong> of deteriorations 4&ndash;6h ahead at <strong>F1 = 0.808</strong>. The guarantee is formal &mdash; a bounded, accounted &epsilon;, not a promise.
+            </div>
+          </div>
+
+          <div class="card highlight">
+            <div class="card-title" style="color: var(--cyan-bright);">
+              <span class="badge-tag tag-cyan">FINDING 2</span> Recurrence beats convolution under noise
+            </div>
+            <div class="card-body" style="font-size: 0.82rem;">
+              DPLSTM and DPGRU hold <strong>0.86&ndash;0.90 AUROC</strong> across the whole &epsilon; range. CNN1D collapses &mdash; at &epsilon; = 4.0 it misses <strong>every</strong> deterioration (FNR = 1.000). Recurrent gates low-pass-filter DP-SGD noise; fixed kernels have no equivalent defence. <strong>C2 confirmed.</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-bottom: 18px;">
+          <div class="card">
+            <div class="card-title">
+              <span class="badge-tag tag-amber">FINDING 3</span> The threshold matters more than the budget
+            </div>
+            <div class="card-body" style="font-size: 0.82rem;">
+              &epsilon; = 2.0 ranks best (0.898 AUROC) but at a fixed &tau; = 0.5 it fires on nothing. Ranking quality and clinical utility are different axes: the operating point must be calibrated per budget, so we ship a calibrated <strong>&tau; = 0.385</strong> rather than a default.
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">
+              <span class="badge-tag tag-teal">FINDING 4</span> Federation held across sites
+            </div>
+            <div class="card-body" style="font-size: 0.82rem;">
+              Sample-weighted FedAvg across Site A and B converged without raw data movement, and the R&eacute;nyi accountant &mdash; persisted across rounds rather than silently reset &mdash; kept the reported &epsilon; truthful for the whole run, not just the last round.
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="border-color: var(--amber-warn);">
+          <div class="card-body" style="font-size: 0.8rem;">
+            <strong style="color: var(--amber-warn);">⚠ Stated limits &mdash;</strong>
+            <strong>(1)</strong> our non-DP baseline scores <em>below</em> its own DP runs (0.824 vs 0.885 AUROC); we read clipping and noise as regularisation on a small, imbalanced cohort, and report it as an anomaly to investigate rather than as evidence that privacy improves accuracy.
+            <strong>(2)</strong> The two sites are simulated from one PhysioNet cohort, so cross-institution heterogeneity is modelled, not observed.
+          </div>
+        </div>
+      </div>
+
+      <div class="speaker-notes">
+        <strong>Talking Points (60s):</strong> "So what does the research track actually conclude? Four things. One: at epsilon 1.0 we keep 0.885 AUROC and catch 86.4% of deteriorations four to six hours early — privacy is affordable on this problem. Two: recurrence beats convolution under DP noise, and the CNN baseline collapses completely — that confirms Contribution C2. Three: the alert threshold matters more than the privacy budget; epsilon 2.0 ranks best but fires on nothing at a default threshold, so we ship a calibrated tau of 0.385. Four: federation converged across both sites with a continuous privacy accountant. And we are explicit about two limits: our non-DP baseline scored lower than its DP runs, which we report as an anomaly rather than spin, and our two sites are simulated from one cohort."
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         SLIDE 11: HOW IT WORKS END TO END
+         ========================================================================== -->
+    <section class="slide" id="slide-10" data-title="How It Works: One Alert, End to End">
+      <div class="slide-eyebrow">
+        <span>●</span> MECHANISM &mdash; THE RUNTIME PATH
+      </div>
+      <h2 class="slide-title">One Alert, End to End</h2>
+      <p class="slide-subtitle">What actually happens between a bedside reading arriving and a clinician reading a summary.</p>
+
+      <div class="slide-body">
+        <div class="pipeline-diagram" style="flex-wrap: wrap; row-gap: 10px;">
+          <div class="pipeline-node">
+            <div class="node-title">1 &middot; Reading arrives</div>
+            <div class="node-sub">6 vitals &rarr; 12h window</div>
+          </div>
+          <div class="pipeline-arrow">➔</div>
+          <div class="pipeline-node">
+            <div class="node-title">2 &middot; Scored twice</div>
+            <div class="node-sub">NEWS2 rule + DPLSTM</div>
+          </div>
+          <div class="pipeline-arrow">➔</div>
+          <div class="pipeline-node accent">
+            <div class="node-title">3 &middot; Abnormalities</div>
+            <div class="node-sub">which vital, by how much</div>
+          </div>
+          <div class="pipeline-arrow">➔</div>
+          <div class="pipeline-node accent">
+            <div class="node-title">4 &middot; Query built</div>
+            <div class="node-sub">from those abnormalities</div>
+          </div>
+          <div class="pipeline-arrow">➔</div>
+          <div class="pipeline-node">
+            <div class="node-title">5 &middot; Scoped retrieval</div>
+            <div class="node-sub">hard patient_id filter</div>
+          </div>
+          <div class="pipeline-arrow">➔</div>
+          <div class="pipeline-node">
+            <div class="node-title">6 &middot; Local narrative</div>
+            <div class="node-sub">Ollama, T = 0.2</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card highlight">
+            <div class="card-title" style="color: var(--teal-primary);">
+              <span>🔒</span> Computed &mdash; cannot be wrong
+            </div>
+            <div class="card-body" style="font-size: 0.85rem;">
+              <ul style="padding-left: 18px; display: flex; flex-direction: column; gap: 8px;">
+                <li><strong>NEWS2 per hour</strong> from five available components (max 14, not 20 &mdash; we say so).</li>
+                <li><strong>Alert decision:</strong> NEWS2 &ge; 5 <em>or</em> detector probability &ge; calibrated &tau;.</li>
+                <li><strong>Breach table:</strong> parameter, observed value, normal range, NEWS2 sub-score, severity.</li>
+                <li><strong>The retrieval query itself</strong>, composed from those breaches.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title" style="color: var(--amber-warn);">
+              <span>✎</span> Generated &mdash; and therefore bounded
+            </div>
+            <div class="card-body" style="font-size: 0.85rem;">
+              <ul style="padding-left: 18px; display: flex; flex-direction: column; gap: 8px;">
+                <li><strong>Only the narrative paragraph</strong> is model output. Every number beside it was computed.</li>
+                <li>The prompt <strong>forbids treatment recommendations</strong> and instructs refusal when context is insufficient.</li>
+                <li>Retrieval is filtered on <code>patient_id</code> before the model sees anything &mdash; isolation is enforced upstream, not requested in a prompt.</li>
+                <li>A missed vital is <strong>impossible by construction</strong>: the table does not depend on the model complying.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="speaker-notes">
+        <strong>Talking Points (75s):</strong> "This is the mechanism, and it's the heart of the contribution. A reading arrives and joins a rolling twelve-hour window. We score it twice — the NEWS2 rule and the private detector — and raise an alert if either crosses. Now the important step: we extract exactly which vitals breached and by how much, and we build the retrieval query out of those specific abnormalities. That's the junction. It is not a generic patient lookup; the alert's own content becomes the search. Retrieval is filtered on patient ID before the model sees a single token. Then the local model writes one paragraph. Look at the split on the right: everything numeric is computed, and only the prose is generated. That's why a missed vital is impossible by construction rather than something we hope the model complies with."
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         SLIDE 12: TRACK A CLINICIAN WORKSTATION
+         ========================================================================== -->
+    <section class="slide" id="slide-11" data-title="Track A Clinician Workstation">
+      <div class="slide-eyebrow">
+        <span>●</span> CLINICAL PRODUCT (TRACK A)
+      </div>
+      <h2 class="slide-title">WardSense: Clinician Decision Workstation</h2>
+      <p class="slide-subtitle">Bedside telemetry replay, strict per-patient ChromaDB isolation, and offline LLM inference.</p>
+
+      <div class="slide-body">
+        <div class="grid-4" style="margin-bottom: 16px;">
+          <div class="card">
+            <div class="card-title" style="font-size: 0.9rem;">
+              <span class="badge-tag tag-teal">WARD</span> Triage board
+            </div>
+            <div class="card-body" style="font-size: 0.82rem;">
+              Six beds as a ruled list <strong>ordered by detector risk</strong>, not a grid of equal tiles. Ordering is itself the information: the answer to &ldquo;who is deteriorating&rdquo; is the top row.
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title" style="font-size: 0.9rem;">
+              <span class="badge-tag tag-teal">BEDSIDE</span> Trajectories
+            </div>
+            <div class="card-body" style="font-size: 0.82rem;">
+              Four vitals as small multiples with normal-range bands, NEWS2 on its own axis with the threshold drawn, and detector risk as a bullet against its calibrated &tau;. Out-of-range points are marked by shape <em>and</em> colour <em>and</em> label.
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title" style="font-size: 0.9rem;">
+              <span class="badge-tag tag-cyan">REPLAY</span> Telemetry engine
+            </div>
+            <div class="card-body" style="font-size: 0.82rem;">
+              Play, pause, scrub and step a recorded stay hour by hour at 0.25&ndash;2s per ICU hour. Labelled <strong>REPLAY</strong> everywhere &mdash; a recorded PhysioNet stay, never claimed as a live feed.
+            </div>
+          </div>
+
+          <div class="card highlight">
+            <div class="card-title" style="font-size: 0.9rem;">
+              <span class="badge-tag tag-amber">DEMO</span> Guided walkthrough
+            </div>
+            <div class="card-body" style="font-size: 0.82rem;">
+              A scripted mode that runs a scenario as numbered chapters. Each names one panel, rings it, dims the rest, and states in a sentence <strong>what to watch for</strong>.
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-4">
+          <div class="card highlight">
+            <div class="card-title" style="font-size: 0.9rem;">
+              <span class="badge-tag tag-cyan">C3</span> Alert&rarr;summary bridge
+            </div>
+            <div class="card-body" style="font-size: 0.82rem;">
+              Deterministic breach table plus a grounded narrative, with the synthesised retrieval query and every retrieved chunk shown as inspectable evidence.
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title" style="font-size: 0.9rem;">
+              <span class="badge-tag tag-teal">ASK</span> Grounded Q&amp;A
+            </div>
+            <div class="card-body" style="font-size: 0.82rem;">
+              Free-text questions answered from one record. The <code>patient_id</code> filter is applied at query time, and an adversarial isolation test asserts cross-patient retrieval returns <strong>empty</strong>, not merely different.
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title" style="font-size: 0.9rem;">
+              <span class="badge-tag tag-amber">ASSURANCE</span> Provenance page
+            </div>
+            <div class="card-body" style="font-size: 0.82rem;">
+              Privacy posture and evaluation state, with every figure read from the evaluation artifact at render time and <strong>withheld</strong> when its provenance cannot be vouched for.
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title" style="font-size: 0.9rem;">
+              <span class="badge-tag tag-teal">PORTAL</span> Patient view
+            </div>
+            <div class="card-body" style="font-size: 0.82rem;">
+              The same retrieval boundary exposed to the patient, with an explicit information-only disclaimer: it explains what is recorded, and never diagnoses or prescribes.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="speaker-notes">
+        <strong>Talking Points (60s):</strong> "Track A is the workstation, and these are the features that exist and run. The ward view is a triage list ordered by risk, because a ward board's job is to answer who is deteriorating — six identical tiles throw that ordering away. The bedside view puts the trajectories next to the alert that they caused. The replay engine drives it hour by hour, and it is labelled replay everywhere — we are not claiming a live hospital feed. Demo mode is a scripted walkthrough that tells you which panel to look at. Then the C3 bridge, grounded Q&A with a hard patient filter backed by an adversarial test, an assurance page that withholds figures it cannot vouch for, and a patient-facing portal on the same boundary."
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         SLIDE 13: VERIFICATION & STAGE 8 ASSURANCE
+         ========================================================================== -->
+    <section class="slide" id="slide-12" data-title="Verification & Assurance">
+      <div class="slide-eyebrow">
+        <span>●</span> CLINICAL VERIFICATION & PROVENANCE
+      </div>
+      <h2 class="slide-title">How We Verify &mdash; and What We Refuse to Claim</h2>
+      <p class="slide-subtitle">Three evaluation layers over 20 held-out scenarios, and the gate that decides whether their numbers may be shown.</p>
+
+      <div class="slide-body">
+        <div class="grid-3" style="margin-bottom: 12px;">
+          <div class="card">
+            <div class="card-title" style="font-size: 0.92rem;">
+              <span class="badge-tag tag-teal">LAYER 1</span> Programmatic fact check
+            </div>
+            <div class="card-body" style="font-size: 0.82rem;">
+              Claim-level extraction against a per-patient ground-truth fact list. Deliberately <strong>not</strong> keyword matching &mdash; we proved keyword checkers pass fabricated content that never trips a watchlist word.
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title" style="font-size: 0.92rem;">
+              <span class="badge-tag tag-cyan">LAYER 2</span> Clinical rubric
+            </div>
+            <div class="card-body" style="font-size: 0.82rem;">
+              Five dimensions &mdash; accuracy, relevance, completeness, safety, conciseness &mdash; scored per scenario, with Cohen's &kappa; reported between raters rather than averaged away.
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title" style="font-size: 0.92rem;">
+              <span class="badge-tag tag-amber">LAYER 3</span> LLM-as-judge
+            </div>
+            <div class="card-body" style="font-size: 0.82rem;">
+              The same rubric applied by a judge model, kept as a third independent signal so disagreement between the layers is visible instead of hidden.
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card highlight" style="border-color: var(--teal-primary);">
+            <div class="card-title" style="color: var(--teal-primary);">
+              <span>🔍</span> The provenance gate
+            </div>
+            <div class="card-body" style="font-size: 0.82rem;">
+              Every figure on the Assurance page is read from <code>stage8_evaluation_report.json</code> at render time &mdash; <strong>nothing is hardcoded</strong>, and a CI test fails the build if an evaluation number is ever pasted into the UI.
+              <br><br>
+              The page also checks whether that artifact came from a real model run. Identical narratives across two models, or constant latency, means <strong>template-derived</strong> &mdash; and the page says so and withholds the numbers.
+            </div>
+          </div>
+
+          <div class="card" style="border-color: var(--amber-warn);">
+            <div class="card-title" style="color: var(--amber-warn);">
+              <span>⚠</span> Current status: withheld
+            </div>
+            <div class="card-body" style="font-size: 0.82rem;">
+              Our current artifact <strong>fails that gate</strong>: it was generated while the model server was unreachable, so the offline fallback wrote every narrative &mdash; both models returned byte-identical text.
+              <br><br>
+              So we are <strong>not</strong> quoting a hallucination rate, a &kappa;, or a 3B-vs-8B recommendation today. The harness is built and tested; the numbers land once it re-runs live. We would rather show the gate working than a figure we cannot defend.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="speaker-notes">
+        <strong>Talking Points (75s):</strong> "Evaluation is three layers: programmatic claim-level fact checking against ground truth, a five-dimension clinical rubric with Cohen's kappa, and an LLM judge as an independent third signal. Now the part I want to be straight about. Every figure on our Assurance page is read from the evaluation artifact at render time — nothing hardcoded, and a CI test fails the build if anyone pastes a number into the UI. The page also checks the artifact's provenance: if two different models returned identical narratives, or latency is constant across every scenario, that artifact came from the offline fallback path, not a model. Our current artifact fails that check — it was generated while the model server was down. So we are deliberately not quoting a hallucination rate or a kappa today. The harness is built and tested; we re-run it against a live model and the page fills itself in. I would rather show you the gate working than quote a number I can't defend under questioning."
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         SLIDE 14: CONCLUSION & LIVE DEMO LAUNCH
+         ========================================================================== -->
+    <section class="slide" id="slide-13" data-title="Conclusion & Live Demo">
+      <div class="slide-eyebrow">
+        <span>●</span> SUMMARY & LIVE DEMONSTRATION
+      </div>
+      <h2 class="slide-title">Summary & System Demonstration</h2>
+      <p class="slide-subtitle">WardSense bridges privacy-preserving machine learning with verifiable clinical assistance.</p>
+
+      <div class="slide-body">
+        <div class="grid-2" style="margin-bottom: 24px;">
+          <div class="card highlight">
+            <div class="card-title">
+              <span class="badge-tag tag-teal">KEY TAKEAWAYS</span> What We Proved
+            </div>
+            <div class="card-body">
+              <ul style="padding-left: 20px; display: flex; flex-direction: column; gap: 10px;">
+                <li><strong>Privacy is affordable here:</strong> 0.885 AUROC and 86.4% early detection at &epsilon; = 1.0, under a formally accounted budget.</li>
+                <li><strong>Recurrence wins under noise:</strong> DPLSTM and DPGRU hold across the &epsilon; range where CNN1D collapses to FNR = 1.000.</li>
+                <li><strong>C3 is structural, not prompted:</strong> the alert's own abnormalities become the retrieval query, and every number in the brief is computed rather than generated.</li>
+                <li><strong>Zero data egress:</strong> on-device inference, with the <code>patient_id</code> filter enforced upstream of the model and asserted by an adversarial test.</li>
+                <li><strong>Honest instrumentation:</strong> the assurance layer withholds evaluation figures whose provenance it cannot verify &mdash; including, right now, our own.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 32px;">
+            <div style="font-size: 2.8rem; margin-bottom: 12px;">💻</div>
+            <div style="font-family: var(--font-display); font-size: 1.4rem; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">
+              Live Workstation Running
+            </div>
+            <div style="font-family: var(--font-mono); font-size: 0.95rem; color: var(--teal-primary); margin-bottom: 16px;">
+              http://localhost:8501
+            </div>
+            <div style="font-size: 0.85rem; color: var(--text-muted);">
+              Press <strong>Esc</strong> to switch to the live Streamlit workstation for the interactive bed replay.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="speaker-notes">
+        <strong>Closing Pitch (30s):</strong> "To conclude: we proved that differential privacy on continuous clinical sequences is viable, attaining an 0.898 AUROC and 86.4% early detection rate at epsilon 1.0. Clinically, we built WardSense to translate predictive scores into verifiable, grounded bedside intelligence. The system is live right now at localhost:8501. Thank you, and we welcome your questions!"
+      </div>
+    </section>
+
+  </main>
+
+  <!-- BOTTOM NAVIGATION & SPEAKER NOTES BAR -->
+  <footer class="bottom-bar">
+    <div class="slide-counter">
+      Slide <span id="currentSlideNum">1</span> of <span id="totalSlidesNum">14</span>: 
+      <span id="currentSlideTitle" style="color: var(--teal-primary); margin-left: 6px; font-weight: 500;">Title</span>
+    </div>
+
+    <div class="nav-buttons">
+      <button class="btn-nav" id="btnPrev" title="Previous Slide (← / PageUp)">
+        <span>←</span> Previous
+      </button>
+      <button class="btn-nav" id="btnNext" title="Next Slide (→ / Space / PageDown)">
+        Next <span>→</span>
+      </button>
+    </div>
+  </footer>
+
+  <!-- SPEAKER NOTES DRAWER -->
+  <aside class="notes-drawer" id="notesDrawer">
+    <div class="notes-header">
+      <div class="notes-title">
+        <span>🎙️</span> SPEAKER TALKING SCRIPT
+      </div>
+      <div style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted);">
+        Press <strong>S</strong> to close
+      </div>
+    </div>
+    <div class="notes-body" id="notesContent">
+      Loading speaker notes...
+    </div>
+  </aside>
+
+  <!-- JUMP TO SLIDE (TOC) MODAL -->
+  <div class="toc-modal" id="tocModal">
+    <div class="toc-card">
+      <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-light); padding-bottom: 12px;">
+        <div style="font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; color: var(--text-main);">
+          Table of Contents
+        </div>
+        <button class="btn-icon" id="btnCloseToc">✕ Close (Esc)</button>
+      </div>
+      <div class="toc-grid" id="tocGrid">
+        <!-- Injected dynamically via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       INTERACTIVE PRESENTATION LOGIC
+       ========================================================================== -->
+  <script>
+    (function() {
+      const slides = Array.from(document.querySelectorAll('.slide'));
+      const totalSlides = slides.length;
+      let currentIndex = 0;
+      let notesOpen = false;
+
+      const progressFill = document.getElementById('progressFill');
+      const currentSlideNum = document.getElementById('currentSlideNum');
+      const totalSlidesNum = document.getElementById('totalSlidesNum');
+      const currentSlideTitle = document.getElementById('currentSlideTitle');
+      
+      const btnPrev = document.getElementById('btnPrev');
+      const btnNext = document.getElementById('btnNext');
+      const btnNotes = document.getElementById('btnNotes');
+      const btnFullscreen = document.getElementById('btnFullscreen');
+      const btnToc = document.getElementById('btnToc');
+      
+      const notesDrawer = document.getElementById('notesDrawer');
+      const notesContent = document.getElementById('notesContent');
+      const tocModal = document.getElementById('tocModal');
+      const tocGrid = document.getElementById('tocGrid');
+      const btnCloseToc = document.getElementById('btnCloseToc');
+
+      totalSlidesNum.textContent = totalSlides;
+
+      // Build Table of Contents dynamically
+      slides.forEach((slide, idx) => {
+        const title = slide.getAttribute('data-title') || `Slide ${idx + 1}`;
+        const item = document.createElement('div');
+        item.className = 'toc-item';
+        item.innerHTML = `
+          <div class="toc-num">${String(idx + 1).padStart(2, '0')}</div>
+          <div class="toc-text">${title}</div>
+        `;
+        item.addEventListener('click', () => {
+          goToSlide(idx);
+          tocModal.classList.remove('open');
+        });
+        tocGrid.appendChild(item);
+      });
+
+      function updateSlide() {
+        slides.forEach((slide, idx) => {
+          slide.classList.remove('active', 'prev');
+          if (idx === currentIndex) {
+            slide.classList.add('active');
+          } else if (idx < currentIndex) {
+            slide.classList.add('prev');
+          }
+        });
+
+        // Update progress bar
+        const pct = ((currentIndex + 1) / totalSlides) * 100;
+        progressFill.style.width = pct + '%';
+
+        // Update counters & title
+        currentSlideNum.textContent = currentIndex + 1;
+        const activeTitle = slides[currentIndex].getAttribute('data-title') || '';
+        currentSlideTitle.textContent = activeTitle;
+
+        // Update speaker notes
+        const activeSlide = slides[currentIndex];
+        const notesElem = activeSlide.querySelector('.speaker-notes');
+        if (notesElem) {
+          notesContent.innerHTML = notesElem.innerHTML;
+        } else {
+          notesContent.innerHTML = '<em>No speaker notes provided for this slide.</em>';
+        }
+
+        // Button states
+        btnPrev.style.opacity = currentIndex === 0 ? '0.5' : '1';
+        btnPrev.style.pointerEvents = currentIndex === 0 ? 'none' : 'auto';
+        btnNext.innerHTML = currentIndex === totalSlides - 1 ? 'Finish <span>✓</span>' : 'Next <span>→</span>';
+      }
+
+      function nextSlide() {
+        if (currentIndex < totalSlides - 1) {
+          currentIndex++;
+          updateSlide();
+        }
+      }
+
+      function prevSlide() {
+        if (currentIndex > 0) {
+          currentIndex--;
+          updateSlide();
+        }
+      }
+
+      function goToSlide(idx) {
+        if (idx >= 0 && idx < totalSlides) {
+          currentIndex = idx;
+          updateSlide();
+        }
+      }
+
+      function toggleNotes() {
+        notesOpen = !notesOpen;
+        if (notesOpen) {
+          notesDrawer.classList.add('open');
+          btnNotes.classList.add('active');
+        } else {
+          notesDrawer.classList.remove('open');
+          btnNotes.classList.remove('active');
+        }
+      }
+
+      function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(err => console.log(err));
+          btnFullscreen.classList.add('active');
+        } else {
+          document.exitFullscreen().catch(err => console.log(err));
+          btnFullscreen.classList.remove('active');
+        }
+      }
+
+      // Event Listeners
+      btnNext.addEventListener('click', nextSlide);
+      btnPrev.addEventListener('click', prevSlide);
+      btnNotes.addEventListener('click', toggleNotes);
+      btnFullscreen.addEventListener('click', toggleFullscreen);
+
+      btnToc.addEventListener('click', () => tocModal.classList.add('open'));
+      btnCloseToc.addEventListener('click', () => tocModal.classList.remove('open'));
+      tocModal.addEventListener('click', (e) => {
+        if (e.target === tocModal) tocModal.classList.remove('open');
+      });
+
+      // Keyboard Controls
+      window.addEventListener('keydown', (e) => {
+        if (tocModal.classList.contains('open')) {
+          if (e.key === 'Escape') tocModal.classList.remove('open');
+          return;
+        }
+
+        switch (e.key) {
+          case 'ArrowRight':
+          case 'PageDown':
+          case ' ':
+            e.preventDefault();
+            nextSlide();
+            break;
+          case 'ArrowLeft':
+          case 'PageUp':
+            e.preventDefault();
+            prevSlide();
+            break;
+          case 'Home':
+            e.preventDefault();
+            goToSlide(0);
+            break;
+          case 'End':
+            e.preventDefault();
+            goToSlide(totalSlides - 1);
+            break;
+          case 's':
+          case 'S':
+            toggleNotes();
+            break;
+          case 'f':
+          case 'F':
+            toggleFullscreen();
+            break;
+          case 'm':
+          case 'M':
+            tocModal.classList.add('open');
+            break;
+        }
+      });
+
+      // Initial setup
+      updateSlide();
+    })();
+  </script>
+</body>
+</html>

@@ -83,13 +83,18 @@ pip install torch opacus flwr streamlit scikit-learn pandas numpy matplotlib tab
 
 ---
 
-### 2. Launch Track A: Clinician Deterioration Workstation
-Launch the interactive browser UI for live patient vital telemetry replay, NEWS2 alert generation, and AI clinical summaries:
+### 2. Launch Track A: WardSense
+Launch the interface — overview, live clinician console, assurance page and patient portal:
 
 ```bash
-streamlit run product_track/interfaces/clinician_app.py --server.port 8501
+streamlit run product_track/interfaces/app.py --server.port 8501
 ```
 Navigate to `http://localhost:8501` in your browser.
+
+For a presentation, open **Overview → Start guided demo**. The walkthrough steps through
+baseline → deterioration → alert → grounded summary → follow-up question, naming what to
+watch at each chapter. The telemetry is a *replay* of recorded PhysioNet stays, not a live
+hospital feed, and the interface labels it as such throughout.
 
 ---
 

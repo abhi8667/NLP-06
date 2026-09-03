@@ -34,6 +34,7 @@ Thumbs.db
 .kombai/
 .vscode/
 .idea/
+.claude/
 node_modules/
 
 # --- added for the shared module & P0 work ---
