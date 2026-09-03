@@ -132,3 +132,18 @@ class DatasetBuilder:
         manifest_path = self.output_dir / "freeze_manifest.json"
         manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
         return manifest
+
+
+if __name__ == "__main__":
+    print("Executing Phase P2: Building and Cryptographically Freezing Dataset...")
+    builder = DatasetBuilder()
+    manifest = builder.build_dataset(max_patients_per_site=50)
+    print("\nDataset successfully built and frozen!")
+    print(f"Output Directory: {builder.output_dir}")
+    print("\nGenerated File Hashes (SHA-256):")
+    for fname, fhash in manifest.get("file_hashes", {}).items():
+        print(f"  - {fname}: {fhash}")
+    print("\nImputation Rates:")
+    for vital, rate in manifest.get("imputation_rates", {}).items():
+        print(f"  - {vital}: {rate * 100:.2f}%")
+
