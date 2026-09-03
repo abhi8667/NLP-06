@@ -19,10 +19,15 @@ class PhysioNetDataset(Dataset):
     Encapsulates pre-processed sliding windows for a single site and split.
     """
 
-    def __init__(self, windows: np.ndarray, labels: np.ndarray, patient_ids: np.ndarray):
+    def __init__(
+        self,
+        windows: np.ndarray,
+        labels: np.ndarray,
+        patient_ids: np.ndarray | None = None,
+    ):
         self.windows = torch.from_numpy(windows.astype(np.float32))
         self.labels = torch.from_numpy(labels.astype(np.float32))
-        self.patient_ids = patient_ids
+        self.patient_ids = patient_ids if patient_ids is not None else np.array([])
 
     def __len__(self) -> int:
         return len(self.windows)
@@ -63,6 +68,20 @@ def get_federated_dataloaders(
             if split == "train":
                 total_pos += float(y.sum())
                 total_samples += len(y)
+
+    # Combined test loader across Site A and Site B
+    w_a_te, y_a_te, p_a_te = load_split_arrays(p_dir, "site_a", "test")
+    w_b_te, y_b_te, p_b_te = load_split_arrays(p_dir, "site_b", "test")
+    w_comb_te = np.concatenate([w_a_te, w_b_te], axis=0)
+    y_comb_te = np.concatenate([y_a_te, y_b_te], axis=0)
+    p_comb_te = np.concatenate([p_a_te, p_b_te], axis=0)
+    combined_ds = PhysioNetDataset(w_comb_te, y_comb_te, p_comb_te)
+    datasets["combined_test"] = DataLoader(
+        combined_ds,
+        batch_size=batch_size,
+        shuffle=False,
+        drop_last=False,
+    )
 
     pos_ratio = total_pos / max(total_samples, 1)
     pos_weight = float((1.0 - pos_ratio) / max(pos_ratio, 1e-4))
